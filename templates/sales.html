@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Edma stores</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@500;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/styles.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/cart.css')}}">
+    <!-- Custom Page Loader -->
+    <link rel="stylesheet" href="{{url_for('static', filename='css/index.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/sales.css')}}">
+
+</head>
+
+<body>
+    <header>
+        <div class="nav-main">
+            <a href="/" class="logo-mark">
+                <img src="{{url_for('static', filename='images/logo.png')}}" alt="">
+            </a>
+
+
+            <div class="nav-icons">
+                <div class="search-wrap">
+
+                    <input type="text" placeholder="Search hoodies, hats…">
+                    <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#8A897F" stroke-width="2">
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                </div>
+                <a href="/wishlist" class="icon-btn wishlist">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0E0E10" stroke-width="2">
+                        <path
+                            d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+                    </svg>
+                    <span class="badge" id="badge-wishlist">0</span>
+                </a>
+                <a href="/cart" class="icon-btn">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0E0E10" stroke-width="2">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                        <path d="M3 6h18" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                    <span class="badge" id="badge-cart">0</span>
+                </a>
+            </div>
+        </div>
+
+    </header>
+
+    <aside>
+        <a href="/" class="overview">
+            <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="48" height="48" viewBox="0 0 48 48"
+                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M 23.951172 4 A 1.50015 1.50015 0 0 0 23.072266 4.3222656 L 8.859375 15.519531 C 7.0554772 16.941163 6 19.113506 6 21.410156 L 6 40.5 C 6 41.863594 7.1364058 43 8.5 43 L 18.5 43 C 19.863594 43 21 41.863594 21 40.5 L 21 30.5 C 21 30.204955 21.204955 30 21.5 30 L 26.5 30 C 26.795045 30 27 30.204955 27 30.5 L 27 40.5 C 27 41.863594 28.136406 43 29.5 43 L 39.5 43 C 40.863594 43 42 41.863594 42 40.5 L 42 21.410156 C 42 19.113506 40.944523 16.941163 39.140625 15.519531 L 24.927734 4.3222656 A 1.50015 1.50015 0 0 0 23.951172 4 z M 24 7.4101562 L 37.285156 17.876953 C 38.369258 18.731322 39 20.030807 39 21.410156 L 39 40 L 30 40 L 30 30.5 C 30 28.585045 28.414955 27 26.5 27 L 21.5 27 C 19.585045 27 18 28.585045 18 30.5 L 18 40 L 9 40 L 9 21.410156 C 9 20.030807 9.6307412 18.731322 10.714844 17.876953 L 24 7.4101562 z">
+                </path>
+            </svg>
+
+            </i>Overview
+        </a>
+        <a href="/shop" class="overview">
+            <!-- Shop / Store Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="48" height="48" viewBox="0 0 48 48">
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M8 16l2-8h28l2 8" />
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M6 16h36v22a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V16z" />
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M16 42V26h16v16" />
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 16v-3" />
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M36 16v-3" />
+            </svg>
+            shop
+        </a>
+        <a href="/sales" class="overview" active>
+            <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="48" height="48" viewBox="0 0 48 48">
+                <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                    d="M41 25.5L25.5 41a3 3 0 0 1-4.24 0L6 25.76V6h19.76L41 21.26a3 3 0 0 1 0 4.24z" />
+                <circle fill="none" stroke="currentColor" stroke-width="3" cx="16" cy="16" r="4" />
+            </svg>
+            sales
+        </a>
+        <a href="/cart" class="overview">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                <path d="M3 6h18" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            cart
+        </a>
+    </aside>
+
+    <main>
+
+        <section class="addon-section">
+            <div class="addon-section-header">
+                <h3>Out of stock</h3>
+                <span class="addon-count" id="outOfStockCount">2</span>
+            </div>
+            <div class="stock-grid" id="outOfStockGrid">
+                <!-- populated by JS or a Jinja loop over out_of_stock -->
+                <div class="stock-card">
+                    <div class="stock-card-image"></div>
+                    <div class="stock-card-info">
+                        <div class="stock-card-name">Dasani 500ml water</div>
+                        <span class="stock-card-barcode">SKU 536639</span>
+                        <button class="restock-btn">Edit</button>
+                    </div>
+                </div>
+                <div class="stock-card">
+                    <div class="stock-card-image"></div>
+                    <div class="stock-card-info">
+                        <div class="stock-card-name">Kasuku Exercise Book</div>
+                        <span class="stock-card-barcode">SKU 536738</span>
+                        <button class="restock-btn">Edit</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="addon-section">
+            <div class="addon-section-header">
+                <h3>Top sellers</h3>
+                <span class="addon-sub">Last 30 days</span>
+            </div>
+            <div class="seller-grid" id="topSellersGrid">
+                <!-- populated by JS or a Jinja loop over top_sellers -->
+                <div class="seller-card">
+                    <div class="seller-card-image"></div>
+                    <div class="seller-card-info">
+                        <span class="seller-rank-badge">#1</span>
+                        <div class="seller-card-name">Dasani 500ml water</div>
+                        <span class="seller-count">42 sold</span>
+                    </div>
+                </div>
+                <div class="seller-card">
+                    <div class="seller-card-image"></div>
+                    <div class="seller-card-info">
+                        <span class="seller-rank-badge">#2</span>
+                        <div class="seller-card-name">Kasuku Exercise Book</div>
+                        <span class="seller-count">30 sold</span>
+                    </div>
+                </div>
+                <div class="seller-card">
+                    <div class="seller-card-image"></div>
+                    <div class="seller-card-info">
+                        <span class="seller-rank-badge">#3</span>
+                        <div class="seller-card-name">School badge</div>
+                        <span class="seller-count">18 sold</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sales-table-card">
+            <div class="sales-table-header">
+                <h2>Sales</h2>
+            </div>
+
+            <div class="sales-table-wrap">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th>Sale ID</th>
+                            <th>Transaction ID</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTable">
+
+
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="{{url_for('static', filename='js/wishlist-badge.js')}}"></script>
+    <script src="{{url_for('static', filename='js/sales.js')}}"></script>
+    <script src="{{ url_for('static', filename='js/cart-badge.js') }}"></script>
+</body>
+
+</html>

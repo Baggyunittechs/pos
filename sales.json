@@ -1,0 +1,177 @@
+{
+  "sales": [
+    {
+      "sales_id": "SALE006",
+      "profit": 10.0,
+      "status": "paid",
+      "checkout_request_id": "ws_CO_120820261603289741562906",
+      "total": 450.0,
+      "created_at": "2026-08-15 11:54:09",
+      "items": [
+        {
+          "barcode": "12345",
+          "name": "Milk",
+          "price": 150
+        },
+        {
+          "barcode": "67890",
+          "name": "Bread",
+          "price": 600
+        }
+      ],
+      "mpesa_receipt": "UHCHO2CTLL",
+      "transaction_date": 20260812160336
+    },
+    {
+      "sales_id": "SALE001",
+      "profit": 10.0,
+      "status": "paid",
+      "checkout_request_id": "ws_CO_120820261603289741562906",
+      "total": 750.0,
+      "created_at": "2026-08-15 11:54:09",
+      "items": [
+        {
+          "barcode": "12345",
+          "name": "Milk",
+          "price": 150
+        },
+        {
+          "barcode": "67890",
+          "name": "Bread",
+          "price": 600
+        }
+      ],
+      "mpesa_receipt": "UHCHO2CTLL",
+      "transaction_date": 20260812160336
+    },
+    {
+      "sales_id": "SALE002",
+      "profit": 10.0,
+      "status": "paid",
+      "checkout_request_id": "ws_CO_120820261603289741562906",
+      "total": 600.0,
+      "created_at": "2026-08-15 11:54:09",
+      "items": [
+        {
+          "barcode": "12345",
+          "name": "Milk",
+          "price": 150
+        },
+        {
+          "barcode": "67890",
+          "name": "Bread",
+          "price": 600
+        }
+      ],
+      "mpesa_receipt": "UHCHO2CTLL",
+      "transaction_date": 20260812160336
+    },
+    {
+      "sales_id": "SALE0018",
+      "profit": 10.0,
+      "status": "paid",
+      "checkout_request_id": "ws_CO_120820261603289741562906",
+      "total": 9600.0,
+      "created_at": "2026-07-15 11:54:09",
+      "items": [
+        {
+          "barcode": "12345",
+          "name": "Milk",
+          "price": 150
+        },
+        {
+          "barcode": "67890",
+          "name": "Bread",
+          "price": 600
+        }
+      ],
+      "mpesa_receipt": "UHCHO2CTLL",
+      "transaction_date": 20260812160336
+    },
+    {
+      "sales_id": "SALE0018",
+      "profit": 10.0,
+      "status": "paid",
+      "checkout_request_id": "ws_CO_120820261603289741562906",
+      "total": 9600.0,
+      "created_at": "2026-08-16 11:54:09",
+      "items": [
+        {
+          "barcode": "12345",
+          "name": "Milk",
+          "price": 150
+        },
+        {
+          "barcode": "67890",
+          "name": "Bread",
+          "price": 600
+        }
+      ],
+      "mpesa_receipt": "UHCHO2CTLL",
+      "transaction_date": 20260812160336
+    },
+    {
+      "sales_id": "SALE_7BF3",
+      "profit": 10.0,
+      "status": "paid",
+      "created_at": "2026-08-18 00:39:29",
+      "total": 2.0,
+      "items": [
+        {
+          "barcode": "6161101536738",
+          "name": "Kasuku Exercise",
+          "price": 1.0,
+          "quantity": 1,
+          "item_total": 1.0
+        },
+        {
+          "barcode": "6161101536639",
+          "name": "dasani 500ml water",
+          "price": 1.0,
+          "quantity": 1,
+          "item_total": 1.0
+        }
+      ],
+      "checkout_request_id": "ws_CO_160820260828473746342296"
+    },
+    {
+      "sales_id": "SALE_4DA8",
+      "profit": 10.0,
+      "status": "paid",
+      "created_at": "2026-08-16 17:12:50",
+      "total": 1.0,
+      "items": [
+        {
+          "barcode": "6161101536639",
+          "name": "dasani 500ml water",
+          "price": 1.0,
+          "quantity": 1,
+          "item_total": 1.0
+        }
+      ],
+      "checkout_request_id": "ws_CO_160820261714042115865866",
+      "mpesa_receipt": "UHG373G9DI",
+      "transaction_date": 20260816171426
+    },
+    {
+      "sales_id": "SALE_72AA",
+      "profit": 10.0,
+      "status": "paid",
+      "created_at": "2026-08-18 16:04:51",
+      "total": 20.0,
+      "items": [
+        {
+          "barcode": "6161101536639",
+          "name": "dasani 500ml water",
+          "price": 10.0,
+          "quantity": 2,
+          
+          "item_total": 20.0
+        }
+      ],
+      "checkout_request_id": "ws_CO_180820261605519741562906",
+      "mpesa_receipt": "UHIHO30U3G",
+      "transaction_date": 20260818160602
+    }
+  ]
+}
