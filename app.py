@@ -934,7 +934,7 @@ def edit_stock():
         return False
 
 
-ADMIN_SECRET_KEY = "12345"
+
 ALLOWED_EXTENSIONS = {''
 'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -943,9 +943,6 @@ def allowed_file(filename):
 
 @app.route('/api/admin/items/upload', methods=['POST'])
 def admin_add_product():
-    key = request.form.get('security_key')
-    if key != ADMIN_SECRET_KEY:
-        return jsonify({"error": "Unauthorized"}), 401
     
     
     name = request.form.get('name', '').strip()
@@ -995,6 +992,7 @@ def admin_add_product():
             img_file.save(img_path)
             image_paths.append('/static/images/' + img_filename)
 
+    stock_interger = int(stock_amount)
     main_image_url = '/static/images/' + main_filename
     new_product = {
         "barcode": barcode,
@@ -1002,8 +1000,8 @@ def admin_add_product():
         "price": price,
         "buying_price": buying_price,
         "tags": tags,
-        "instock": stock_amount,
-        "main_image": main_image_url,
+        "instock": stock_interger,
+        "image": main_image_url,
     }
 
     products = load_products()

@@ -115,15 +115,114 @@
                     </div>
                 </div>
                 <div class="shop-right" style="display: flex;gap: 10px; align-items: center;">
-                    <button>start scanner</button>
-                    <button>Upload Product</button>
+                    <button>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="icon icon-tabler icons-tabler-outline icon-tabler-scan">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M5 12h14" />
+                            <path d="M3 7v-2a2 2 0 0 1 2 -2h2" />
+                            <path d="M3 17v2a2 2 0 0 0 2 2h2" />
+                            <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                            <path d="M17 21h2a2 2 0 0 0 2 -2v-2" />
+                        </svg>
+                        start scanner
+                    </button>
+                    <button id="uploadTrigger">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="icon icon-tabler icons-tabler-outline icon-tabler-cloud-upload">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1" />
+                            <path d="M9 15l3 -3l3 3" />
+                            <path d="M12 12l0 9" />
+                        </svg>
+                        Upload Product
+                    </button>
                 </div>
 
             </div>
 
-            <div class="shop-items" id="shop-items">
+            <div class="shop-items" id="shop-items"></div>
+            <div class="upload-overlay" id="uploadOverlay">
+                <div class="upload-panel">
+                    <div class="upload-panel-header">
+                        <span>Upload Product</span>
+                        <button type="button" class="upload-close" id="uploadClose" aria-label="Close">&times;</button>
+                    </div>
 
+                    <form class="upload-form" id="uploadForm">
+                        <div class="form-row">
+
+
+                            <div class="form-group">
+                                <label for="barcode">Barcode</label>
+                                <input type="text" id="barcode" name="barcode" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="productName">Name</label>
+                            <input type="text" id="productName" name="name" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sellingPrice">Price</label>
+                                <input type="number" id="sellingPrice" name="price" min="0" step="0.01" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="buyingPrice">Buying price</label>
+                                <input type="number" id="buyingPrice" name="buyingPrice" min="0" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="stockAmount">Stock amount</label>
+                                <input type="number" id="stockAmount" name="stock" min="0" step="1" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tags">Tags</label>
+                                <input type="text" id="tags" name="tags" placeholder="e.g. drinks">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="productImage">Image</label>
+                            <input type="file" id="productImage" name="image" accept="image/*">
+                            <div class="image-preview" id="imagePreview">
+                                <span class="image-preview-placeholder">No image selected</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="upload-btn" id="uploadBtn">
+                            <span class="upload-btn-text">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="icon icon-tabler icons-tabler-outline icon-tabler-cloud-upload">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1" />
+                                    <path d="M9 15l3 -3l3 3" />
+                                    <path d="M12 12l0 9" />
+                                </svg> upload
+                            </span>
+                            <span class="upload-spinner" id="uploadSpinner"></span>
+                        </button>
+
+                        <div class="upload-success" id="uploadSuccess">Product uploaded &check;</div>
+                        <div class="upload-error" id="uploadError"></div>
+                    </form>
+                </div>
             </div>
+
+
+
+
+
         </div>
     </main>
 

@@ -199,3 +199,96 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     loadProducts();
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('uploadOverlay');
+  const closeBtn = document.getElementById('uploadClose');
+  const form = document.getElementById('uploadForm');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const imageInput = document.getElementById('productImage');
+  const imagePreview = document.getElementById('imagePreview');
+  const successMsg = document.getElementById('uploadSuccess');
+  const errorMsg = document.getElementById('uploadError');
+
+  const trigger = document.getElementById('uploadTrigger');
+  if (trigger) {
+    trigger.addEventListener('click', () => overlay.classList.add('active'));
+    
+  }
+
+  closeBtn.addEventListener('click', () => overlay.classList.remove('active'));
+
+  window.openUploadOverlay = () => overlay.classList.add('active');
+  window.closeUploadOverlay = () => overlay.classList.remove('active');
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.innerHTML = `<img src="${e.target.result}" alt="Product preview">`;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    successMsg.classList.remove('show');
+    errorMsg.classList.remove('show');
+    uploadBtn.classList.add('loading');
+    uploadBtn.disabled = true;
+    const formData = new FormData();
+    formData.append('name', document.getElementById('productName').value.trim());
+    formData.append('barcode', document.getElementById('barcode').value.trim());
+    formData.append('price', document.getElementById('sellingPrice').value);
+    formData.append('buying price', document.getElementById('buyingPrice').value);
+    const stockValue = parseInt(document.getElementById('stockAmount').value, 10);
+    if (isNaN(stockValue) || stockValue < 0) {
+      uploadBtn.classList.remove('loading');
+      uploadBtn.disabled = false;
+      errorMsg.textContent = 'Stock amount must be a whole number';
+      errorMsg.classList.add('show');
+      return;
+    }
+    formData.append('stock_amount', stockValue);
+    formData.append('tags', document.getElementById('tags').value.trim());
+
+    
+
+    const imageFile = imageInput.files[0];
+    if (imageFile) {
+      formData.append('main_image', imageFile);
+    }
+    try {
+      const res = await fetch('/api/admin/items/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      uploadBtn.classList.remove('loading');
+      uploadBtn.disabled = false;
+      successMsg.classList.add('show');
+      form.reset();
+      imagePreview.innerHTML = '<span class="image-preview-placeholder">No image selected</span>';
+      
+      window.dispatchEvent(new CustomEvent('product:uploaded', { detail: data.product }));
+      window.location.href = '/shop'
+      setTimeout(() => {
+        successMsg.classList.remove('show');
+        overlay.classList.remove('active');
+      }, 1500);
+
+    } catch (err) {
+      uploadBtn.classList.remove('loading');
+      uploadBtn.disabled = false;
+      errorMsg.textContent = err.message;
+      errorMsg.classList.add('show');
+    }
+  });
+});
