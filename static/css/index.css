@@ -88,8 +88,8 @@ main {
     align-items: center;
     font-weight: 600;
     margin-top: 10px;
-    
-    
+
+
 }
 
 .stat {
@@ -205,9 +205,26 @@ main {
     gap: 70px;
 }
 
+.upload-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.288);
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    
+}
+.upload-overlay.active {
+  display: flex;
+}
+
 .scanner-section {
-    --scanner-navy: #001846;
-    --scanner-navy-light: #0a2a63;
+    --scanner-navy: #0e0e0f;
+    --scanner-navy-light: #101011;
     --scanner-gold: #FAB400;
     --scanner-gold-dark: #E08900;
 
@@ -217,10 +234,7 @@ main {
     flex: 0 0 300px;
     height: auto;
 
-    position: fixed;
-    bottom: 114px;
-    right: 20px;
-    z-index: 20;
+   
 
     background: #fff;
     border: 1px solid #e6e8ec;
@@ -232,7 +246,7 @@ main {
     box-shadow:
         0 2px 4px rgba(0, 24, 70, 0.06),
         0 24px 48px -12px rgba(0, 24, 70, 0.35);
-    display: none;
+    
 }
 
 .header-scanner {
@@ -269,7 +283,7 @@ main {
 }
 
 .close svg {
-    fill: rgba(255, 255, 255, 0.75);
+    fill: rgb(255, 255, 255);
     transition: fill 0.15s ease;
 }
 
@@ -407,158 +421,159 @@ video {
 }
 
 .sales-table-card {
-  background: #ffffff;
-  border: 1px solid #eceae3;
-  border-radius: 4px;
-  padding: 1.25rem;
-  font-family: inherit;
-  margin-top: 20px;
+    background: #ffffff;
+    border: 1px solid #eceae3;
+    border-radius: 4px;
+    padding: 1.25rem;
+    font-family: inherit;
+    margin-top: 20px;
 }
 
 .sales-table-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
 }
 
 .sales-table-header h2 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
 }
 
 .sales-table-wrap {
-  overflow-x: auto;
+    overflow-x: auto;
 }
 
 .sales-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
 }
 
 .sales-table th {
-  text-align: left;
-  padding: 10px 12px;
-  color: #8a8a86;
-  font-weight: 500;
-  font-size: 12px;
-  border-bottom: 1px solid #eceae3;
-  white-space: nowrap;
+    text-align: left;
+    padding: 10px 12px;
+    color: #8a8a86;
+    font-weight: 500;
+    font-size: 12px;
+    border-bottom: 1px solid #eceae3;
+    white-space: nowrap;
 }
 
 .sales-table td {
-  padding: 12px;
-  color: #1a1a1a;
-  border-bottom: 1px solid #f3f2ee;
-  white-space: nowrap;
+    padding: 12px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #f3f2ee;
+    white-space: nowrap;
 }
 
 .sales-table tbody tr:last-child td {
-  border-bottom: none;
+    border-bottom: none;
 }
 
 .sales-table tbody tr:hover {
-  background: #fbf8f2;
+    background: #fbf8f2;
 }
 
 .status {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .status-paid {
-  background: #e6f4ea;
-  color: #1e7a3d;
+    background: #e6f4ea;
+    color: #1e7a3d;
 }
 
 .status-pending {
-  background: #fdf1de;
-  color: #b5680c;
+    background: #fdf1de;
+    color: #b5680c;
 }
 
 .status-failed {
-  background: #fbe9e7;
-  color: #b3261e;
+    background: #fbe9e7;
+    color: #b3261e;
 }
 
 @media (max-width: 480px) {
-  .sales-table-card {
-    padding: 1rem;
-  }
-  .sales-table th,
-  .sales-table td {
-    padding: 8px;
-  }
+    .sales-table-card {
+        padding: 1rem;
+    }
+
+    .sales-table th,
+    .sales-table td {
+        padding: 8px;
+    }
 }
 
 
 
 
 .charts-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 20px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
 }
 
 .chart-card {
-  flex: 1 1 240px;
-  background: #ffffff;
-  border: 1px solid #eceae3;
-  border-radius: 4px;
-  padding: 1.25rem 1.25rem 1.5rem;
+    flex: 1 1 240px;
+    background: #ffffff;
+    border: 1px solid #eceae3;
+    border-radius: 4px;
+    padding: 1.25rem 1.25rem 1.5rem;
 }
 
 .chart-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
 }
 
 .chart-title {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1a1a;
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
 }
 
 .chart-sub {
-  display: block;
-  font-size: 11px;
-  color: #8a8a86;
-  margin-top: 2px;
+    display: block;
+    font-size: 11px;
+    color: #8a8a86;
+    margin-top: 2px;
 }
 
 .chart-total {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a1a;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
 }
 
 .chart-svg {
-  width: 100%;
-  height: 170px;
-  display: block;
+    width: 100%;
+    height: 170px;
+    display: block;
 }
 
 .chart-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  padding: 0 2px;
-  font-size: 10px;
-  color: #8a8a86;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding: 0 2px;
+    font-size: 10px;
+    color: #8a8a86;
 }
 
 @media (max-width: 480px) {
-  .chart-card {
-    flex: 1 1 100%;
-  }
+    .chart-card {
+        flex: 1 1 100%;
+    }
 }

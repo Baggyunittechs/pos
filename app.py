@@ -606,7 +606,8 @@ def callback():
             sales_id,
             "paid",
             mpesa_receipt=mpesa_receipt,
-            transaction_date=transaction_date
+            transaction_date=transaction_date,
+            payment_method = "M-pesa"
         )
         
 
@@ -689,6 +690,231 @@ def callback_status():
         }), 200
 
 
+@app.route("/api/payment/cash", methods=["POST"])
+def cash_payment():
+    data = request.json
+    if not data:
+        return jsonify({"status": "error","message": "missing data"}), 404
+    sales_id = data.get("sales_id")
+    sales = load_sales()
+    found = False
+    salle = None
+    if data:
+        for sale in sales:
+            if sale.get("sales_id") == sales_id:
+                transaction_date = sale.get("created_at")
+                found = True
+                salle = sale
+                break
+
+        if not found:
+            return jsonify({"status": "error","message": "sales_id not found"}), 404
+        updated = update_sale_status(
+            sales_id,
+            "paid",
+            transaction_date=transaction_date,
+            payment_method = "Cash"
+        )
+        if not updated:
+            return jsonify({
+                "status": "error",
+                "message": "sale could not be updated",
+                "sales_id": sales_id
+            }), 200
+        
+        update_sell_count(salle)
+        return jsonify({
+            "status": "success",
+            "message": "payment successful",
+            "sales_id": sales_id,
+        }), 200
+    else:
+        print(f"Payment failed")
+
+        update_sale_status(sales_id, "failed")
+
+        return jsonify({
+            "status": "failed",
+            "message": "sales id was not found please make another sale",
+            "sales_id": sales_id,
+            
+        }), 200
+
+
+
+@app.route("/api/sales/payments/hybrid", methods=["POST"])
+def hybrid_payment():
+
+    data = request.json
+
+    if not data:
+        return jsonify({
+            "status": "error",
+            "message": "data not provided"
+        }), 400
+
+    sales_id = data.get("sales_id")
+    phone = data.get("phone")
+    cash_amount = data.get("cash_amount", 0)
+    mpesa_amount = data.get("mpesa_amount", 0)
+
+
+    if not sales_id:
+        return jsonify({
+            "status": "error",
+            "message": "sales_id required"
+        }), 400
+
+    if not phone:
+        return jsonify({
+            "status": "error",
+            "message": "phone required"
+        }), 400
+
+    try:
+        cash_amount = float(cash_amount)
+        mpesa_amount = float(mpesa_amount)
+    except (ValueError, TypeError):
+
+        return jsonify({
+            "status": "error",
+            "message": "Invalid payment amounts"
+        }), 400
+
+
+    sales = load_sales()
+
+    sale = None
+
+    for s in sales:
+        if s.get("sales_id") == sales_id:
+            sale = s
+            break
+
+    if not sale:
+        return jsonify({
+            "status": "error",
+            "message": "Sale not found"
+        }), 404
+
+
+    sale_total = float(sale.get("total", 0))
+    total_payment = cash_amount + mpesa_amount
+
+    if total_payment != sale_total:
+
+        return jsonify({
+            "status": "error",
+            "message": "Payment amounts do not match sale total",
+            "sale_total": sale_total,
+            "cash_amount": cash_amount,
+            "mpesa_amount": mpesa_amount,
+            "total_payment": total_payment
+        }), 400
+
+
+
+    if cash_amount <= 0 or mpesa_amount <= 0:
+
+        return jsonify({
+            "status": "error",
+            "message": "Hybrid payment must contain both cash and M-PESA"
+        }), 400
+
+
+    sale["payment_method"] = "hybrid"
+
+    sale["payments"] = {
+
+        "cash": {
+            "amount": cash_amount,
+            "status": "received"
+        },
+
+        "mpesa": {
+            "amount": mpesa_amount,
+            "status": "pending",
+            "phone": phone
+        }
+
+    }
+
+
+    sale["status"] = "pending"
+
+    save_sales(sales)
+
+
+
+    callback_url = (
+        "https://your-domain.com"
+        "/api/payment/mpesa/callback"
+    )
+
+    try:
+
+        response = initiate_stk_prompt(
+            phone,
+            mpesa_amount,
+            callback_url,
+            sales_id
+        )
+
+    except Exception as e:
+
+        sale["payments"]["mpesa"]["status"] = "failed"
+        save_sales(sales)
+
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+
+    checkout_request_id = response.get(
+        "CheckoutRequestID"
+    )
+
+    if not checkout_request_id:
+
+        sale["payments"]["mpesa"]["status"] = "failed"
+        save_sales(sales)
+
+        return jsonify({
+            "status": "error",
+            "message": "M-PESA STK Push failed",
+            "mpesa_response": response
+        }), 400
+
+
+
+    sale["payments"]["mpesa"]["checkout_request_id"] = (
+        checkout_request_id
+    )
+
+    save_sales(sales)
+
+
+
+    return jsonify({
+
+        "status": "pending",
+
+        "message": "Cash received. Waiting for M-PESA payment.",
+
+        "sales_id": sales_id,
+
+        "sale_total": sale_total,
+
+        "cash_amount": cash_amount,
+
+        "mpesa_amount": mpesa_amount,
+
+        "checkout_request_id": checkout_request_id
+
+    }), 200
+  
 
 def update_sell_count(sales_id):
     products = load_products()
@@ -709,6 +935,7 @@ def update_sell_count(sales_id):
     except Exception as e:
         print(f"Failed to update product sell counts: {e}")
         return False
+
 
 
 @app.route("/api/admin/sales/summary", methods=["GET"])
@@ -1017,6 +1244,19 @@ def admin_add_product():
         return jsonify({"error": f"Failed to save product data: {str(e)}"}), 500
 
     return jsonify({"success": True, "product": new_product}), 201
+
+
+@app.route("/api/admin/stock/value", methods=["GET"])
+def stock_value():
+    products = load_products()
+    stock_value = 0
+    for product in products:
+        value = product.get("price") * product.get("instock")
+        stock_value += value
+        
+    return jsonify({"status": "success", "stock_value": stock_value}), 200
+    
+
 
 if __name__ == "__main__":
     print("Starting Flask...")

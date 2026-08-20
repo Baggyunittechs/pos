@@ -128,20 +128,23 @@
 
 .upload-overlay {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.288);
   z-index: 300;
   display: none;
+  align-items: center;
+  justify-content: center;
 }
-.upload-overlay svg {
-    margin-right: 10px;
-}
+
 .upload-overlay.active {
-  display: block;
+  display: flex;
 }
 
 .upload-panel {
-  width: 350px;
+  width: 300px;
   height: auto;
   background: #fff;
   border: 1px solid #e6e8ec;
@@ -237,7 +240,7 @@
 .image-preview {
   margin-top: 6px;
   width: 100%;
-  height: 100px;
+  height: 90px;
   background: #f4f3ee;
   border: 1px dashed #d9d7cd;
   border-radius: 4px;
@@ -303,11 +306,7 @@
 .upload-btn.loading .upload-btn-text {
   display: none;
 }
-.upload-btn-text {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+
 @keyframes upload-spin {
   to {
     transform: rotate(360deg);
@@ -326,5 +325,20 @@
 }
 
 .upload-success.show {
+  display: block;
+}
+
+.upload-error {
+  display: none;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b3261e;
+  background: #fbe9e7;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.upload-error.show {
   display: block;
 }
