@@ -1,60 +1,73 @@
 {
-  "products": [
-    {
-      "name": "dasani 500ml water",
-      "barcode": "6161101536639",
-      "price": 10.0,
-      "image": "/static/images/dasani 500ml.jpg",
-      "instock": 20,
-      "sell_count": 0,
-      "buying_price": 5.0
-    },
-    {
-      "name": "Kasuku Exercise",
-      "barcode": "6161101536738",
-      "price": 200.0,
-      "image": "/static/images/book.png",
-      "instock": 10,
-      "sell_count": 100.0
-    },
-    {
-      "barcode": "1122334455667789",
-      "name": "Julius Kyuma",
-      "price": 780.0,
-      "buying_price": 90.0,
-      "tags": [
-        "lethal",
-        "cloth",
-        "trial"
-      ],
-      "instock": 10,
-      "image": "/static/images/1122334455667789_main_1od2kiuhrtkg1.jpeg"
-    },
-    {
-      "barcode": "1122334455667788",
-      "name": "white sweatsuite for ladies",
-      "price": 500.0,
-      "buying_price": 400.0,
-      "tags": [
-        "lethal",
-        "cloth",
-        "trial"
-      ],
-      "instock": 40,
-      "image": "/static/images/1122334455667788_main_download_1.jpg"
-    },
-    {
-      "barcode": "1122334455667780",
-      "name": "helloo",
-      "price": 700.0,
-      "buying_price": 600.0,
-      "tags": [
-        "lethal",
-        "cloth",
-        "trial"
-      ],
-      "instock": 60,
-      "image": "/static/images/1122334455667780_main_x8zufdgwf0ng1.jpeg"
-    }
-  ]
+    "products": [
+        {
+            "name": "dasani 500ml water",
+            "barcode": "6161101536639",
+            "price": 10.0,
+            "image": "/static/images/dasani 500ml.jpg",
+            "instock": 20,
+            "sell_count": 4,
+            "buying_price": 5.0
+        },
+        {
+            "name": "Kasuku Exercise",
+            "barcode": "6161101536738",
+            "price": 200.0,
+            "image": "/static/images/book.png",
+            "instock": 10,
+            "sell_count": 100.0
+        },
+        {
+            "barcode": "1122334455667789",
+            "name": "Julius Kyuma",
+            "price": 780.0,
+            "buying_price": 90.0,
+            "tags": [
+                "lethal",
+                "cloth",
+                "trial"
+            ],
+            "instock": 10,
+            "image": "/static/images/1122334455667789_main_1od2kiuhrtkg1.jpeg"
+        },
+        {
+            "barcode": "1122334455667788",
+            "name": "white sweatsuite for ladies",
+            "price": 500.0,
+            "buying_price": 400.0,
+            "tags": [
+                "lethal",
+                "cloth",
+                "trial"
+            ],
+            "instock": 40,
+            "image": "/static/images/1122334455667788_main_download_1.jpg"
+        },
+        {
+            "barcode": "1122334455667780",
+            "name": "helloo",
+            "price": 700.0,
+            "buying_price": 600.0,
+            "tags": [
+                "lethal",
+                "cloth",
+                "trial"
+            ],
+            "instock": 60,
+            "image": "/static/images/1122334455667780_main_x8zufdgwf0ng1.jpeg"
+        },
+        {
+            "barcode": "112233445566778999",
+            "name": "julius",
+            "price": 40.0,
+            "buying_price": 20.0,
+            "tags": [
+                "lethal",
+                "cloth",
+                "trial"
+            ],
+            "instock": 70,
+            "image": "/static/images/112233445566778999_main_Screenshot_2026-03-14_111234.png"
+        }
+    ]
 }

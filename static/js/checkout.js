@@ -30,15 +30,82 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         window.saleData.salesId = result.sale.sales_id;
         window.saleData.total = result.sale.total;
+        
     } else {
+        window.location.href = `/cart`
         console.error("Checkout error:", result.message);
+        
     }
 
-    (function () {
-        var phoneInput = document.getElementById('phone');
-        var phoneWrap = document.getElementById('phone-wrap');
-        var phoneHint = document.getElementById('phone-hint');
-        var payBtn = document.getElementById('pay-btn');
+    window.saleData.paymentMethod = 'mpesa';
+    window.saleData.hybridPhoneNumber = null;
+
+    const payMethodEls = document.querySelectorAll('.pay-method');
+    const mpesaWrap = document.getElementById('mpesa-wrap');
+    const hybridWrap = document.getElementById('hybrid-wrap');
+    const hybridCashInput = document.getElementById('hybrid-cash-amount');
+    const hybridMpesaInput = document.getElementById('hybrid-mpesa-amount');
+
+    function totalAsNumber() {
+        return parseFloat(window.saleData.total) || 0;
+    }
+
+    function updatePayButtonState() {
+        const payBtn = document.getElementById('pay-btn');
+        if (!payBtn) return;
+        const method = window.saleData.paymentMethod || 'mpesa';
+
+        if (method === 'mpesa') {
+            payBtn.disabled = !window.saleData.phoneNumber;
+        } else if (method === 'cash') {
+            payBtn.disabled = false;
+        } else if (method === 'hybrid') {
+            const cash = parseFloat(hybridCashInput ? hybridCashInput.value : '');
+            const mpesa = parseFloat(hybridMpesaInput ? hybridMpesaInput.value : '');
+            const total = totalAsNumber();
+            const amountsOk = !isNaN(cash) && !isNaN(mpesa) && cash > 0 && mpesa > 0 &&
+                Math.abs((cash + mpesa) - total) < 0.01;
+            payBtn.disabled = !(window.saleData.hybridPhoneNumber && amountsOk);
+        }
+    }
+
+    payMethodEls.forEach(function (el) {
+        el.addEventListener('click', function () {
+            payMethodEls.forEach(function (m) { m.classList.remove('active'); });
+            el.classList.add('active');
+
+            const method = el.getAttribute('value');
+            window.saleData.paymentMethod = method;
+
+            if (mpesaWrap) mpesaWrap.style.display = (method === 'mpesa' || method === 'cash') ? '' : 'none';
+            if (hybridWrap) hybridWrap.style.display = method === 'hybrid' ? '' : 'none';
+
+            updatePayButtonState();
+        });
+    });
+
+    // Cash and M-Pesa amounts must sum to exactly the sale total (the hybrid
+    // API rejects anything else), so keep them balanced as the person types.
+    if (hybridCashInput && hybridMpesaInput) {
+        hybridCashInput.addEventListener('input', function () {
+            const cash = parseFloat(hybridCashInput.value) || 0;
+            const remainder = Math.max(0, totalAsNumber() - cash);
+            hybridMpesaInput.value = remainder ? remainder.toFixed(2) : '';
+            updatePayButtonState();
+        });
+
+        hybridMpesaInput.addEventListener('input', function () {
+            const mpesa = parseFloat(hybridMpesaInput.value) || 0;
+            const remainder = Math.max(0, totalAsNumber() - mpesa);
+            hybridCashInput.value = remainder ? remainder.toFixed(2) : '';
+            updatePayButtonState();
+        });
+    }
+
+    function setupPhoneValidation(config) {
+        var phoneInput = document.getElementById(config.inputId);
+        var phoneWrap = document.getElementById(config.wrapId);
+        var phoneHint = document.getElementById(config.hintId);
 
         function sanitizePhone(raw) {
             var digits = raw.replace(/\D/g, '');
@@ -82,8 +149,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 phoneWrap.classList.remove('error');
                 phoneHint.classList.remove('error');
                 phoneHint.textContent = 'Enter a valid Kenyan number, e.g. 0712 345 678 or 712 345 678';
-                if (payBtn) payBtn.disabled = true;
-                window.saleData.phoneNumber = null;
+                window.saleData[config.targetKey] = null;
+                updatePayButtonState();
                 return;
             }
             
@@ -92,15 +159,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 phoneHint.classList.remove('error');
                 var display = formatDisplay(sanitized);
                 phoneHint.textContent = '✅ Valid number: ' + display + ' (' + sanitized + ')';
-                if (payBtn) payBtn.disabled = false;
-                window.saleData.phoneNumber = sanitized;
+                window.saleData[config.targetKey] = sanitized;
             } else {
                 phoneWrap.classList.add('error');
                 phoneHint.classList.add('error');
                 phoneHint.textContent = '❌ Invalid Kenyan number. Must start with 07 or 7 and have 9 digits (e.g., 0712 345 678)';
-                if (payBtn) payBtn.disabled = true;
-                window.saleData.phoneNumber = null;
+                window.saleData[config.targetKey] = null;
             }
+            updatePayButtonState();
         }
 
         if (phoneInput) {
@@ -133,66 +199,182 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             validateAndUpdate('');
         }
-    })();
+    }
+
+    setupPhoneValidation({ inputId: 'phone', wrapId: 'phone-wrap', hintId: 'phone-hint', targetKey: 'phoneNumber' });
+    setupPhoneValidation({ inputId: 'hybrid-phone', wrapId: 'hybrid-phone-wrap', hintId: 'hybrid-phone-hint', targetKey: 'hybridPhoneNumber' });
+
+    async function payWithMpesa(salesId) {
+        const phoneNumber = window.saleData.phoneNumber;
+
+        if (!phoneNumber) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        showOverlay('Processing payment', 'Sending your M-Pesa request...', 'loading');
+
+        try {
+            const paymentResponse = await fetch('/api/sales/payments/mpesa', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    phone: phoneNumber,
+                    sales_id: salesId
+                })
+            });
+
+            const paymentResult = await paymentResponse.json();
+
+            if (paymentResponse.ok && paymentResult.ResponseCode === '0') {
+                const checkoutRequestId = paymentResult.CheckoutRequestID;
+                window.saleData.checkoutRequestId = checkoutRequestId;
+                
+                showOverlay(
+                    'Payment request sent!',
+                    `Check your phone for the M-Pesa prompt\nTransaction ID: ${checkoutRequestId}`,
+                    'accepted'
+                );
+
+                listenForCallback(salesId, checkoutRequestId);
+            } else {
+                const errorMsg = paymentResult.ResponseDescription || paymentResult.message || 'Payment initiation failed';
+                showOverlay(
+                    'Payment failed',
+                    errorMsg,
+                    'failed'
+                );
+                addRetryButton();
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            showOverlay(
+                'Payment failed',
+                'Network error. Please check your connection and try again.',
+                'failed'
+            );
+            addRetryButton();
+        }
+    }
+
+    async function payWithCash(salesId) {
+        showOverlay('Processing payment', 'Recording cash payment...', 'loading');
+
+        try {
+            const paymentResponse = await fetch('/api/payment/cash', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sales_id: salesId })
+            });
+
+            const paymentResult = await paymentResponse.json();
+
+            if (paymentResponse.ok && paymentResult.status === 'success') {
+                showOverlay(
+                    'Payment Successful!',
+                    `Amount: KES ${window.saleData.total}\nMethod: Cash`,
+                    'success'
+                );
+                showActionButtons();
+            } else {
+                showOverlay(
+                    'Payment failed',
+                    paymentResult.message || 'Could not record cash payment',
+                    'failed'
+                );
+                addRetryButton();
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            showOverlay(
+                'Payment failed',
+                'Network error. Please check your connection and try again.',
+                'failed'
+            );
+            addRetryButton();
+        }
+    }
+
+    async function payWithHybrid(salesId) {
+        const phoneNumber = window.saleData.hybridPhoneNumber;
+        const cashAmount = parseFloat(document.getElementById('hybrid-cash-amount').value);
+        const mpesaAmount = parseFloat(document.getElementById('hybrid-mpesa-amount').value);
+
+        if (!phoneNumber) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        if (isNaN(cashAmount) || isNaN(mpesaAmount) || cashAmount <= 0 || mpesaAmount <= 0) {
+            alert('Enter both a cash amount and an M-Pesa amount');
+            return;
+        }
+
+        showOverlay('Processing payment', 'Recording cash and sending your M-Pesa request...', 'loading');
+
+        try {
+            const paymentResponse = await fetch('/api/sales/payments/hybrid', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sales_id: salesId,
+                    phone: phoneNumber,
+                    cash_amount: cashAmount,
+                    mpesa_amount: mpesaAmount
+                })
+            });
+
+            const paymentResult = await paymentResponse.json();
+
+            if (paymentResponse.ok && paymentResult.status === 'pending') {
+                const checkoutRequestId = paymentResult.checkout_request_id;
+                window.saleData.checkoutRequestId = checkoutRequestId;
+
+                showOverlay(
+                    'Cash received!',
+                    `Check your phone for the M-Pesa prompt\nM-Pesa amount: KES ${mpesaAmount}\nTransaction ID: ${checkoutRequestId}`,
+                    'accepted'
+                );
+
+                // Same STK-push callback the mpesa flow polls — the hybrid
+                // sale only needs the M-Pesa portion confirmed.
+                listenForCallback(salesId, checkoutRequestId);
+            } else {
+                const errorMsg = paymentResult.message || 'Hybrid payment failed';
+                showOverlay('Payment failed', errorMsg, 'failed');
+                addRetryButton();
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            showOverlay(
+                'Payment failed',
+                'Network error. Please check your connection and try again.',
+                'failed'
+            );
+            addRetryButton();
+        }
+    }
 
     const payBtn = document.getElementById('pay-btn');
     if (payBtn) {
         payBtn.addEventListener('click', async function(e) {
             e.preventDefault();
-            
-            const phoneNumber = window.saleData.phoneNumber;
+
             const salesId = window.saleData.salesId;
-            const total = window.saleData.total;
+            const method = window.saleData.paymentMethod || 'mpesa';
 
-            if (!phoneNumber) {
-                alert('Please enter a valid phone number');
-                return;
-            }
-
-            showOverlay('Processing payment', 'Sending your M-Pesa request...', 'loading');
-
-            try {
-                const paymentResponse = await fetch('/api/sales/payments/mpesa', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        phone: phoneNumber,
-                        sales_id: salesId
-                    })
-                });
-
-                const paymentResult = await paymentResponse.json();
-
-                if (paymentResponse.ok && paymentResult.ResponseCode === '0') {
-                    const checkoutRequestId = paymentResult.CheckoutRequestID;
-                    window.saleData.checkoutRequestId = checkoutRequestId;
-                    
-                    showOverlay(
-                        'Payment request sent!',
-                        `Check your phone for the M-Pesa prompt\nTransaction ID: ${checkoutRequestId}`,
-                        'accepted'
-                    );
-
-                    listenForCallback(salesId, checkoutRequestId);
-                } else {
-                    const errorMsg = paymentResult.ResponseDescription || paymentResult.message || 'Payment initiation failed';
-                    showOverlay(
-                        'Payment failed',
-                        errorMsg,
-                        'failed'
-                    );
-                    addRetryButton();
-                }
-            } catch (error) {
-                console.error('Payment error:', error);
-                showOverlay(
-                    'Payment failed',
-                    'Network error. Please check your connection and try again.',
-                    'failed'
-                );
-                addRetryButton();
+            if (method === 'mpesa') {
+                await payWithMpesa(salesId);
+            } else if (method === 'cash') {
+                await payWithCash(salesId);
+            } else if (method === 'hybrid') {
+                await payWithHybrid(salesId);
             }
         });
     }

@@ -404,15 +404,16 @@ def checkout():
     
     sales = load_sales()
     for salle in sales:
-        if salle.get("sales_id") == sales_id:
+        if salle.get("sales_id") == sales_id and salle.get("status") != "paid":    
             return jsonify({
                 "status": "success",
                 "sale": salle
             }), 200
+        
 
     return jsonify({
         "status": "error",
-        "message": "sale not found"
+        "message": "sale not found or has already been closed"
     }), 400
 
 
@@ -617,7 +618,7 @@ def callback():
                 "message": "sale could not be updated",
                 "sales_id": sales_id
             }), 200
-        update_sell_count(salle)
+        update_sell_count(sales_id)
         return jsonify({
             "status": "success",
             "message": "payment successful",
@@ -706,7 +707,8 @@ def cash_payment():
                 found = True
                 salle = sale
                 break
-
+        if salle.get("status") == "paid":
+             return jsonify({"status": "error","message": "This sale has already been paid"}), 400
         if not found:
             return jsonify({"status": "error","message": "sales_id not found"}), 404
         updated = update_sale_status(
@@ -722,7 +724,7 @@ def cash_payment():
                 "sales_id": sales_id
             }), 200
         
-        update_sell_count(salle)
+        update_sell_count(sale=salle)
         return jsonify({
             "status": "success",
             "message": "payment successful",
@@ -791,6 +793,12 @@ def hybrid_payment():
             sale = s
             break
 
+    if sale.get("status") == "paid":
+        return jsonify({
+            "status": "error",
+            "message": "This sale has already been paid"
+        }), 400
+    
     if not sale:
         return jsonify({
             "status": "error",
@@ -894,7 +902,7 @@ def hybrid_payment():
     )
 
     save_sales(sales)
-
+    update_sell_count(sale)
 
 
     return jsonify({
@@ -916,19 +924,27 @@ def hybrid_payment():
     }), 200
   
 
-def update_sell_count(sales_id):
+def update_sell_count(sale):
     products = load_products()
-    for item in sales.get("items", []):
+
+    for item in sale.get("items", []):
         barcode = item.get("barcode")
         quantity = item.get("quantity", 1)
 
         for product in products:
-            if product.get("barcode") == barcode:
-                product["sell_count"] = product.get("sellcount") + quantity 
-            break
+            if str(product.get("barcode")) == str(barcode):
+                current_count = product.get("sell_count", 0)
+                product["sell_count"] = current_count + quantity
+                break
+
     try:
         with open("products2.json", "w", encoding="utf-8") as file:
-            json.dump(products, file, indent=4)
+            json.dump(
+                {"products": products},
+                file,
+                indent=4,
+                ensure_ascii=False
+            )
 
         return True
 
