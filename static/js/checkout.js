@@ -1,624 +1,323 @@
-document.addEventListener("DOMContentLoaded", async () => {
-    const params = new URLSearchParams(window.location.search);
-    const salesId = params.get("sales_id");
+const totalOrder = document.getElementById("total_order");
+const revToday = document.getElementById("rev-today");
+const revMonth = document.getElementById("rev-month");
+const salesTable = document.getElementById("salesTable");
+const profMonthly = document.getElementById("monthly_profit");
+const exportCsvBtn = document.getElementById("exportCsvBtn");
 
-    if (!salesId) {
-        console.error("sales_id not found");
-        return;
+let currentSalesData = [];
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  async function loadSales() {
+    try {
+      const response = await fetch('/api/admin/sales/summary');
+
+      if (!response.ok) {
+        throw new Error('Failed to load sales');
+      }
+
+      const data = await response.json();
+
+      function calcDelta(current, previous) {
+        const c = Number(current) || 0;
+        const p = Number(previous) || 0;
+        if (p > 0) return ((c - p) / p) * 100;
+        if (c > 0) return 100;
+        return 0;
+      }
+
+      function calcProfitDelta(current, previous) {
+        const c = Number(current) || 0;
+        const p = Number(previous) || 0;
+        if (p !== 0) return ((c - p) / Math.abs(p)) * 100;
+        if (c !== 0) return 100;
+        return 0;
+      }
+
+      function pickTrend(trendArray, fallback) {
+        return Array.isArray(trendArray) && trendArray.length ? trendArray : fallback;
+      }
+
+      totalOrder.textContent = data.today.sales_total;
+      revToday.textContent = "KES " + data.today.revenue;
+      revMonth.textContent = "KES " + data.this_month.revenue;
+      profMonthly.textContent = "KES " + data.this_month.monthly_profit;
+
+      const monthlySalesCountEl = document.getElementById("monthly_sales_count");
+      if (monthlySalesCountEl) {
+        monthlySalesCountEl.textContent = data.this_month.sales_total;
+      }
+
+      const salesChangePct = calcDelta(data.today.sales_total, data.yesterday.sales_total);
+      const salesChangeMnth = calcDelta(data.this_month.sales_total, data.last_month.sales_total);
+      const revenueChangePct = calcDelta(data.today.revenue, data.yesterday.revenue);
+      const revenueChangeMnth = calcDelta(data.this_month.revenue, data.last_month.revenue);
+      const profChangeMnth = calcProfitDelta(data.this_month.monthly_profit, data.last_month.last_month_profit);
+
+      setDelta('sales-delta', salesChangePct);
+      setDelta('rev-today-delta', revenueChangePct);
+      setDelta('rev-month-delta', revenueChangeMnth);
+      setDelta('sales-month-delta', salesChangeMnth);
+      setDelta('monthly_profit_delta', profChangeMnth);
+
+      setSparkline('sales-sparkline', pickTrend(data.daily_sales_trend, [data.yesterday.sales_total, data.today.sales_total]));
+      setSparkline('rev-today-sparkline', pickTrend(data.daily_revenue_trend, [data.yesterday.revenue, data.today.revenue]));
+      setSparkline('rev-month-sparkline', pickTrend(data.monthly_revenue_trend, [data.last_month.revenue, data.this_month.revenue]));
+      setSparkline('sales-month-sparkline', pickTrend(data.monthly_sales_trend, [data.last_month.sales_total, data.this_month.sales_total]));
+      setSparkline('monthly_profit_sparkline', pickTrend(data.monthly_profit_trend, [data.last_month.last_month_profit, data.this_month.monthly_profit]));
+
+    } catch (error) {
+      console.error('Error loading products:', error);
+    }
+  }
+
+  function setDelta(elementId, pct) {
+    const el = document.getElementById(elementId);
+    if (!el || pct === undefined || pct === null || isNaN(pct)) return;
+
+    const rounded = Math.round(pct * 10) / 10;
+    el.textContent = (rounded >= 0 ? "+" : "") + rounded + "%";
+    el.classList.toggle('positive', rounded >= 0);
+    el.classList.toggle('negative', rounded < 0);
+  }
+
+  function setSparkline(svgId, rawValues) {
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+
+    const values = Array.isArray(rawValues) ? rawValues.map(v => Number(v) || 0) : [];
+    if (values.length < 2) return;
+
+    const polyline = svg.querySelector('polyline');
+    if (!polyline) return;
+
+    const w = 100, h = 30, pad = 2;
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const range = (max - min) === 0 ? 1 : (max - min);
+    const step = (w - pad * 2) / (values.length - 1);
+
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+    const points = values.map((v, i) => {
+      const x = pad + i * step;
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    polyline.setAttribute('points', points);
+  }
+
+  async function loadSalesHistory() {
+    try {
+      const response = await fetch('/api/admin/sales/history');
+
+      if (!response.ok) {
+        throw new Error('Failed to load sales');
+      }
+
+      const salesHistory = await response.json();
+      currentSalesData = Array.isArray(salesHistory) ? salesHistory : [salesHistory];
+      renderSales(currentSalesData);
+
+    } catch (error) {
+      console.error('Error loading sales history:', error);
+    }
+  }
+
+  function renderSales(salesHistory) {
+    if (!salesTable) return;
+    salesTable.innerHTML = '';
+
+    if (!salesHistory || salesHistory.length === 0) {
+      salesTable.innerHTML = `
+        <div class="empty-state-container" style="grid-column: 1 / -1;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <path d="M3 6h18"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+            <line x1="8" y1="14" x2="16" y2="14"/>
+            <line x1="8" y1="18" x2="12" y2="18"/>
+          </svg>
+          <h3>No products available</h3>
+          <p>Check back later for new items.</p>
+        </div>
+      `;
+      return;
     }
 
-    const response = await fetch(`/api/checkout?sales_id=${salesId}`);
-    const result = await response.json();
+    salesHistory.forEach(dt => {
+      const productHTML = createSaleTable(dt);
+      salesTable.insertAdjacentHTML('beforeend', productHTML);
+    });
+  }
 
-    window.saleData = { salesId: null, total: null, checkoutRequestId: null, phoneNumber: null };
+  function createSaleTable(dt) {
+    const salesID = dt.sales_id;
+    const salesStatus = dt.sales_status;
+    const total = dt.total;
+    const transactionID = dt.transaction_id;
+    const profit = dt.profit;
 
-    if (result.status === "success") {
-        const saleIdElement = document.getElementById("sale-id");
-        if (saleIdElement) {
-            saleIdElement.textContent = result.sale.sales_id;
-        }
-        
-        const totalElement = document.getElementById("total");
-        if (totalElement) {
-            totalElement.textContent = result.sale.total;
-        }
-        
-        const payTotalElement = document.getElementById("pay-total");
-        if (payTotalElement) {
-            payTotalElement.textContent = result.sale.total;
-        }
+    return `
+      <tr>
+        <td>${salesID}</td>
+        <td>${transactionID}</td>
+        <td>KES ${total}</td>
+        <td>KES ${profit}</td>
+        <td><span class="status status-paid">${salesStatus}</span></td>
+      </tr>
+    `;
+  }
 
-        window.saleData.salesId = result.sale.sales_id;
-        window.saleData.total = result.sale.total;
-        
-    } else {
-        window.location.href = `/cart`
-        console.error("Checkout error:", result.message);
-        
+  function exportTableToCSV() {
+    if (!currentSalesData || currentSalesData.length === 0) {
+      alert("No data available to export.");
+      return;
     }
 
-    window.saleData.paymentMethod = 'mpesa';
-    window.saleData.hybridPhoneNumber = null;
+    let csvContent = "Sales ID,Transaction ID,Total (KES),Profit (KES),Status\n";
+    let sumTotal = 0;
+    let sumProfit = 0;
 
-    const payMethodEls = document.querySelectorAll('.pay-method');
-    const mpesaWrap = document.getElementById('mpesa-wrap');
-    const hybridWrap = document.getElementById('hybrid-wrap');
-    const hybridCashInput = document.getElementById('hybrid-cash-amount');
-    const hybridMpesaInput = document.getElementById('hybrid-mpesa-amount');
+    currentSalesData.forEach(dt => {
+      const total = Number(dt.total) || 0;
+      const profit = Number(dt.profit) || 0;
+      
+      sumTotal += total;
+      sumProfit += profit;
 
-    function totalAsNumber() {
-        return parseFloat(window.saleData.total) || 0;
-    }
-
-    function updatePayButtonState() {
-        const payBtn = document.getElementById('pay-btn');
-        if (!payBtn) return;
-        const method = window.saleData.paymentMethod || 'mpesa';
-
-        if (method === 'mpesa') {
-            payBtn.disabled = !window.saleData.phoneNumber;
-        } else if (method === 'cash') {
-            payBtn.disabled = false;
-        } else if (method === 'hybrid') {
-            const cash = parseFloat(hybridCashInput ? hybridCashInput.value : '');
-            const mpesa = parseFloat(hybridMpesaInput ? hybridMpesaInput.value : '');
-            const total = totalAsNumber();
-            const amountsOk = !isNaN(cash) && !isNaN(mpesa) && cash > 0 && mpesa > 0 &&
-                Math.abs((cash + mpesa) - total) < 0.01;
-            payBtn.disabled = !(window.saleData.hybridPhoneNumber && amountsOk);
-        }
-    }
-
-    payMethodEls.forEach(function (el) {
-        el.addEventListener('click', function () {
-            payMethodEls.forEach(function (m) { m.classList.remove('active'); });
-            el.classList.add('active');
-
-            const method = el.getAttribute('value');
-            window.saleData.paymentMethod = method;
-
-            if (mpesaWrap) mpesaWrap.style.display = (method === 'mpesa' || method === 'cash') ? '' : 'none';
-            if (hybridWrap) hybridWrap.style.display = method === 'hybrid' ? '' : 'none';
-
-            updatePayButtonState();
-        });
+      csvContent += `"${dt.sales_id}","${dt.transaction_id}","${total}","${profit}","${dt.sales_status}"\n`;
     });
 
-    // Cash and M-Pesa amounts must sum to exactly the sale total (the hybrid
-    // API rejects anything else), so keep them balanced as the person types.
-    if (hybridCashInput && hybridMpesaInput) {
-        hybridCashInput.addEventListener('input', function () {
-            const cash = parseFloat(hybridCashInput.value) || 0;
-            const remainder = Math.max(0, totalAsNumber() - cash);
-            hybridMpesaInput.value = remainder ? remainder.toFixed(2) : '';
-            updatePayButtonState();
-        });
+    csvContent += `\n"TOTALS","","${sumTotal}","${sumProfit}",""`;
 
-        hybridMpesaInput.addEventListener('input', function () {
-            const mpesa = parseFloat(hybridMpesaInput.value) || 0;
-            const remainder = Math.max(0, totalAsNumber() - mpesa);
-            hybridCashInput.value = remainder ? remainder.toFixed(2) : '';
-            updatePayButtonState();
-        });
-    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sales_export_${new Date().toISOString().slice(0,10)}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
-    function setupPhoneValidation(config) {
-        var phoneInput = document.getElementById(config.inputId);
-        var phoneWrap = document.getElementById(config.wrapId);
-        var phoneHint = document.getElementById(config.hintId);
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener("click", exportTableToCSV);
+  }
 
-        function sanitizePhone(raw) {
-            var digits = raw.replace(/\D/g, '');
-            
-            if (digits.length === 0) {
-                return '';
-            }
-            
-            if (digits.startsWith('0')) {
-                digits = digits.substring(1);
-                if (digits.length > 0) {
-                    return '254' + digits;
-                }
-            } else if (digits.startsWith('7') || digits.startsWith('1')) {
-                return '254' + digits;
-            } else if (digits.startsWith('254')) {
-                return digits;
-            }
-            
-            return digits;
-        }
-
-        function isValidPhone(phone) {
-            return /^254[71]\d{8}$/.test(phone);
-        }
-
-        function formatDisplay(phone) {
-            var display = phone.replace(/^254/, '');
-            var parts = [];
-            if (display.length > 0) parts.push(display.slice(0, 3));
-            if (display.length > 3) parts.push(display.slice(3, 6));
-            if (display.length > 6) parts.push(display.slice(6, 9));
-            return parts.join(' ');
-        }
-
-        function validateAndUpdate(phoneInputValue) {
-            var sanitized = sanitizePhone(phoneInputValue);
-            var valid = isValidPhone(sanitized);
-            
-            if (sanitized.length === 0) {
-                phoneWrap.classList.remove('error');
-                phoneHint.classList.remove('error');
-                phoneHint.textContent = 'Enter a valid Kenyan number, e.g. 0712 345 678 or 712 345 678';
-                window.saleData[config.targetKey] = null;
-                updatePayButtonState();
-                return;
-            }
-            
-            if (valid) {
-                phoneWrap.classList.remove('error');
-                phoneHint.classList.remove('error');
-                var display = formatDisplay(sanitized);
-                phoneHint.textContent = '✅ Valid number: ' + display + ' (' + sanitized + ')';
-                window.saleData[config.targetKey] = sanitized;
-            } else {
-                phoneWrap.classList.add('error');
-                phoneHint.classList.add('error');
-                phoneHint.textContent = '❌ Invalid Kenyan number. Must start with 07 or 7 and have 9 digits (e.g., 0712 345 678)';
-                window.saleData[config.targetKey] = null;
-            }
-            updatePayButtonState();
-        }
-
-        if (phoneInput) {
-            phoneInput.addEventListener('input', function (e) {
-                var rawValue = e.target.value;
-                validateAndUpdate(rawValue);
-            });
-
-            phoneInput.addEventListener('paste', function (e) {
-                e.preventDefault();
-                var pasted = (e.clipboardData || window.clipboardData).getData('text');
-                phoneInput.value = pasted;
-                validateAndUpdate(pasted);
-            });
-
-            phoneInput.addEventListener('keydown', function (e) {
-                var allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
-                if (allowed.indexOf(e.key) !== -1) return;
-                if (!/^\d$/.test(e.key)) e.preventDefault();
-            });
-
-            phoneInput.addEventListener('blur', function (e) {
-                var rawValue = e.target.value;
-                var sanitized = sanitizePhone(rawValue);
-                if (isValidPhone(sanitized)) {
-                    var display = formatDisplay(sanitized);
-                    phoneInput.value = display;
-                }
-            });
-
-            validateAndUpdate('');
-        }
-    }
-
-    setupPhoneValidation({ inputId: 'phone', wrapId: 'phone-wrap', hintId: 'phone-hint', targetKey: 'phoneNumber' });
-    setupPhoneValidation({ inputId: 'hybrid-phone', wrapId: 'hybrid-phone-wrap', hintId: 'hybrid-phone-hint', targetKey: 'hybridPhoneNumber' });
-
-    async function payWithMpesa(salesId) {
-        const phoneNumber = window.saleData.phoneNumber;
-
-        if (!phoneNumber) {
-            alert('Please enter a valid phone number');
-            return;
-        }
-
-        showOverlay('Processing payment', 'Sending your M-Pesa request...', 'loading');
-
-        try {
-            const paymentResponse = await fetch('/api/sales/payments/mpesa', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    phone: phoneNumber,
-                    sales_id: salesId
-                })
-            });
-
-            const paymentResult = await paymentResponse.json();
-
-            if (paymentResponse.ok && paymentResult.ResponseCode === '0') {
-                const checkoutRequestId = paymentResult.CheckoutRequestID;
-                window.saleData.checkoutRequestId = checkoutRequestId;
-                
-                showOverlay(
-                    'Payment request sent!',
-                    `Check your phone for the M-Pesa prompt\nTransaction ID: ${checkoutRequestId}`,
-                    'accepted'
-                );
-
-                listenForCallback(salesId, checkoutRequestId);
-            } else {
-                const errorMsg = paymentResult.ResponseDescription || paymentResult.message || 'Payment initiation failed';
-                showOverlay(
-                    'Payment failed',
-                    errorMsg,
-                    'failed'
-                );
-                addRetryButton();
-            }
-        } catch (error) {
-            console.error('Payment error:', error);
-            showOverlay(
-                'Payment failed',
-                'Network error. Please check your connection and try again.',
-                'failed'
-            );
-            addRetryButton();
-        }
-    }
-
-    async function payWithCash(salesId) {
-        showOverlay('Processing payment', 'Recording cash payment...', 'loading');
-
-        try {
-            const paymentResponse = await fetch('/api/payment/cash', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ sales_id: salesId })
-            });
-
-            const paymentResult = await paymentResponse.json();
-
-            if (paymentResponse.ok && paymentResult.status === 'success') {
-                showOverlay(
-                    'Payment Successful!',
-                    `Amount: KES ${window.saleData.total}\nMethod: Cash`,
-                    'success'
-                );
-                showActionButtons();
-            } else {
-                showOverlay(
-                    'Payment failed',
-                    paymentResult.message || 'Could not record cash payment',
-                    'failed'
-                );
-                addRetryButton();
-            }
-        } catch (error) {
-            console.error('Payment error:', error);
-            showOverlay(
-                'Payment failed',
-                'Network error. Please check your connection and try again.',
-                'failed'
-            );
-            addRetryButton();
-        }
-    }
-
-    async function payWithHybrid(salesId) {
-        const phoneNumber = window.saleData.hybridPhoneNumber;
-        const cashAmount = parseFloat(document.getElementById('hybrid-cash-amount').value);
-        const mpesaAmount = parseFloat(document.getElementById('hybrid-mpesa-amount').value);
-
-        if (!phoneNumber) {
-            alert('Please enter a valid phone number');
-            return;
-        }
-
-        if (isNaN(cashAmount) || isNaN(mpesaAmount) || cashAmount <= 0 || mpesaAmount <= 0) {
-            alert('Enter both a cash amount and an M-Pesa amount');
-            return;
-        }
-
-        showOverlay('Processing payment', 'Recording cash and sending your M-Pesa request...', 'loading');
-
-        try {
-            const paymentResponse = await fetch('/api/sales/payments/hybrid', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sales_id: salesId,
-                    phone: phoneNumber,
-                    cash_amount: cashAmount,
-                    mpesa_amount: mpesaAmount
-                })
-            });
-
-            const paymentResult = await paymentResponse.json();
-
-            if (paymentResponse.ok && paymentResult.status === 'pending') {
-                const checkoutRequestId = paymentResult.checkout_request_id;
-                window.saleData.checkoutRequestId = checkoutRequestId;
-
-                showOverlay(
-                    'Cash received!',
-                    `Check your phone for the M-Pesa prompt\nM-Pesa amount: KES ${mpesaAmount}\nTransaction ID: ${checkoutRequestId}`,
-                    'accepted'
-                );
-
-                // Same STK-push callback the mpesa flow polls — the hybrid
-                // sale only needs the M-Pesa portion confirmed.
-                listenForCallback(salesId, checkoutRequestId);
-            } else {
-                const errorMsg = paymentResult.message || 'Hybrid payment failed';
-                showOverlay('Payment failed', errorMsg, 'failed');
-                addRetryButton();
-            }
-        } catch (error) {
-            console.error('Payment error:', error);
-            showOverlay(
-                'Payment failed',
-                'Network error. Please check your connection and try again.',
-                'failed'
-            );
-            addRetryButton();
-        }
-    }
-
-    const payBtn = document.getElementById('pay-btn');
-    if (payBtn) {
-        payBtn.addEventListener('click', async function(e) {
-            e.preventDefault();
-
-            const salesId = window.saleData.salesId;
-            const method = window.saleData.paymentMethod || 'mpesa';
-
-            if (method === 'mpesa') {
-                await payWithMpesa(salesId);
-            } else if (method === 'cash') {
-                await payWithCash(salesId);
-            } else if (method === 'hybrid') {
-                await payWithHybrid(salesId);
-            }
-        });
-    }
-
-    function listenForCallback(salesId, checkoutRequestId) {
-        let attempts = 0;
-        const maxAttempts = 30;
-        const interval = 2000;
-
-        const checkCallback = setInterval(async () => {
-            attempts++;
-            
-            try {
-                const statusResponse = await fetch('/api/payment/mpesa/callback/status', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sales_id: salesId,
-                        checkout_request_id: checkoutRequestId
-                    })
-                });
-                
-                const statusResult = await statusResponse.json();
-
-                if (statusResult.status === 'success') {
-                    clearInterval(checkCallback);
-                    updateOverlayContent(
-                        'Payment Successful!',
-                        `Amount: KES ${window.saleData.total}\nReceipt: ${statusResult.receipt || 'N/A'}`,
-                        'success'
-                    );
-                    showActionButtons();
-                    return;
-                }
-                
-                if (statusResult.status === 'failed') {
-                    clearInterval(checkCallback);
-                    updateOverlayContent(
-                        'Payment failed',
-                        statusResult.message || 'Transaction declined',
-                        'failed'
-                    );
-                    addRetryButton();
-                    return;
-                }
-                
-                if (statusResult.status === 'pending') {
-                    if (attempts % 5 === 0) {
-                        updateOverlayContent(
-                            'Waiting for confirmation',
-                            `Please check your phone and enter your PIN\n(${Math.floor(attempts * interval / 1000)}s)`,
-                            'loading'
-                        );
-                    }
-                }
-                
-                if (attempts >= maxAttempts) {
-                    clearInterval(checkCallback);
-                    updateOverlayContent(
-                        'Payment timeout',
-                        'Please check your M-Pesa transaction status or contact support.',
-                        'pending'
-                    );
-                    addRetryButton();
-                }
-                
-            } catch (error) {
-                console.error('Callback check error:', error);
-                if (attempts >= maxAttempts) {
-                    clearInterval(checkCallback);
-                    updateOverlayContent(
-                        'Status check failed',
-                        'Please contact support.',
-                        'failed'
-                    );
-                    addRetryButton();
-                }
-            }
-        }, interval);
-    }
-
-    function getStatusIcon(type) {
-        const icons = {
-            loading: {
-                class: 'spin',
-                svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>'
-            },
-            accepted: {
-                class: 'pop',
-                svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>'
-            },
-            pending: {
-                class: 'pulse',
-                svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>'
-            },
-            success: {
-                class: 'pop',
-                svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path class="check-path" d="M8 12.5l2.6 2.6L16 9.5"/></svg>'
-            },
-            failed: {
-                class: 'shake',
-                svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5"/><path d="M14.5 9.5l-5 5"/></svg>'
-            }
-        };
-        return icons[type] || icons.loading;
-    }
-
-    function parseOverlayMessage(title, message) {
-        const lines = message.split('\n').map(l => l.trim()).filter(Boolean);
-        const metaRows = [];
-        const textLines = [];
-
-        lines.forEach(line => {
-            const match = line.match(/^([A-Za-z ]{3,24}):\s*(.+)$/);
-            if (match) {
-                metaRows.push({ label: match[1].trim(), value: match[2].trim() });
-            } else if (line) {
-                textLines.push(line);
-            }
-        });
-
-        return { title, textLines, metaRows };
-    }
-
-    function renderOverlayContent(title, message, type) {
-        const overlay = document.getElementById('payment-overlay');
-        const content = document.getElementById('overlay-content');
-        
-        if (!overlay || !content) return;
-
-        const icon = getStatusIcon(type);
-        const { textLines, metaRows } = parseOverlayMessage(title, message);
-
-        content.className = 'overlay-content ' + type;
-
-        let html = `
-            <div class="status-visual">
-                <div class="status-icon ${icon.class}">${icon.svg}</div>
-            </div>
-            <h3 class="status-title">${title}</h3>
-        `;
-
-        textLines.forEach(line => {
-            html += `<p class="status-text">${line}</p>`;
-        });
-
-        if (metaRows.length) {
-            html += `<div class="status-meta">`;
-            metaRows.forEach(row => {
-                html += `
-                    <div class="status-meta-row">
-                        <span class="status-meta-label">${row.label}</span>
-                        <span class="status-meta-value">${row.value}</span>
-                    </div>
-                `;
-            });
-            html += `</div>`;
-        }
-
-        content.innerHTML = html;
-        overlay.style.display = 'flex';
-    }
-
-    function showOverlay(title, message, type) {
-        renderOverlayContent(title, message, type);
-    }
-
-    function updateOverlayContent(title, message, type) {
-        renderOverlayContent(title, message, type);
-    }
-
-    function showActionButtons() {
-        const content = document.getElementById('overlay-content');
-        if (!content) return;
-
-        let buttonsHTML = `
-            <button class="overlay-action-btn continue-btn" onclick="window.location.href='/shop'">
-                Continue Shopping
-            </button>
-            <div class="btn-group">
-                <button class="overlay-action-btn continue-btn" onclick="window.print()">
-                    Print Receipt
-                </button>
-                <button class="overlay-action-btn continue-btn" onclick="shareWhatsApp()">
-                    WhatsApp
-                </button>
-                <button class="overlay-action-btn continue-btn" onclick="shareEmail()">
-                    Email
-                </button>
-            </div>
-        `;
-
-        content.innerHTML += buttonsHTML;
-    }
-
-    function addRetryButton() {
-        const content = document.getElementById('overlay-content');
-        if (!content) return;
-
-        const existingBtn = content.querySelector('.retry-btn');
-        if (existingBtn) existingBtn.remove();
-
-        const retryBtn = document.createElement('button');
-        retryBtn.textContent = 'Try again';
-        retryBtn.className = 'overlay-action-btn retry-btn';
-        retryBtn.onclick = function() {
-            const overlay = document.getElementById('payment-overlay');
-            if (overlay) overlay.style.display = 'none';
-            const payBtn = document.getElementById('pay-btn');
-            if (payBtn) payBtn.disabled = false;
-        };
-        content.appendChild(retryBtn);
-    }
-
-    window.shareWhatsApp = function() {
-        const total = window.saleData.total || '0.00';
-        const transactionId = window.saleData.checkoutRequestId || 'N/A';
-        const message = `Thank you for your purchase!\nTotal: KES ${total}\nTransaction ID: ${transactionId}`;
-        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    };
-
-    window.shareEmail = function() {
-        const total = window.saleData.total || '0.00';
-        const transactionId = window.saleData.checkoutRequestId || 'N/A';
-        const subject = 'Your Purchase Receipt';
-        const body = `Thank you for your purchase!\n\nTotal: KES ${total}\nTransaction ID: ${transactionId}`;
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    };
-
-    const overlay = document.getElementById('payment-overlay');
-    if (overlay) {
-        overlay.addEventListener('click', function(e) {
-            if (e.target === this) {
-                const content = document.getElementById('overlay-content');
-                if (content && content.classList.contains('success')) {
-                    this.style.display = 'none';
-                }
-                if (content && content.classList.contains('failed')) {
-                    this.style.display = 'none';
-                }
-            }
-        });
-    }
+  loadSalesHistory();
+  loadSales();
+  loadWeeklyData();
 });
+
+function renderLineChart(svgId, rawData, lineColor, fillColor) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+
+  const data = Array.isArray(rawData) ? rawData.map(v => Number(v) || 0) : [];
+
+  if (data.length < 2) {
+    svg.innerHTML = `
+      <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
+        No data available
+      </text>
+    `;
+    return;
+  }
+
+  const w = 280, h = 170, pad = 15;
+  const min = 0;
+  let max = Math.max(...data);
+  if (max === 0) max = 1;
+  max = max * 1.1; 
+
+  const range = max - min;
+  const step = (w - pad * 2) / (data.length - 1);
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  const points = data.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const firstX = pad;
+  const lastX = pad + (data.length - 1) * step;
+  const bottomY = h - pad;
+  const areaPoints = `${firstX},${bottomY} ${points} ${lastX},${bottomY}`;
+
+  svg.innerHTML = `
+    <polygon points="${areaPoints}" fill="${fillColor}" />
+    <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  `;
+}
+
+function formatNumber(n) {
+  return Number(n || 0).toLocaleString();
+}
+
+function renderLabels(containerId, labels) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = labels.map(l => `<span>${l}</span>`).join('');
+}
+
+function loadWeeklyData() {
+  fetch('/api/admin/sales/weekly')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to load weekly sales data');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const weeklyRevenue = data.revenue || {};
+      const weeklySales = data.sales || {};
+      const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+      const revenueValues = dayOrder.map(day => Number(weeklyRevenue[day]) || 0);
+      const salesValues = dayOrder.map(day => Number(weeklySales[day]) || 0);
+
+      const shortDayLabels = dayOrder.map(day => day.substring(0, 3));
+
+      renderLineChart('salesChart', salesValues, '#F5A623', 'rgba(245, 166, 35, 0.15)');
+      renderLineChart('revenueChart', revenueValues, '#1E9E75', 'rgba(30, 158, 117, 0.15)');
+
+      const totalRevenue = revenueValues.reduce((a, b) => a + b, 0);
+      const totalSales = salesValues.reduce((a, b) => a + b, 0);
+
+      const revenueTotalEl = document.getElementById('revenueTotal');
+      if (revenueTotalEl) {
+        revenueTotalEl.textContent = 'KES ' + formatNumber(totalRevenue);
+      }
+
+      const salesTotalEl = document.getElementById('salesTotal');
+      if (salesTotalEl) {
+        salesTotalEl.textContent = formatNumber(totalSales);
+      }
+
+      renderLabels('revenueLabels', shortDayLabels);
+      renderLabels('salesLabels', shortDayLabels);
+    })
+    .catch(error => {
+      console.error('Error loading weekly data:', error);
+
+      const charts = ['revenueChart', 'salesChart'];
+      charts.forEach(id => {
+        const svg = document.getElementById(id);
+        if (svg) {
+          svg.innerHTML = `
+            <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
+              Failed to load data
+            </text>
+          `;
+        }
+      });
+    });
+}

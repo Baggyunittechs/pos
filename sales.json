@@ -93,7 +93,7 @@
             "profit": 10.0,
             "status": "paid",
             "checkout_request_id": "ws_CO_120820261603289741562906",
-            "total": 9600.0,
+            "total": 100.0,
             "created_at": "2026-08-16 11:54:09",
             "items": [
                 {
@@ -469,6 +469,38 @@
                     "price": 10.0,
                     "quantity": 1,
                     "item_total": 10.0
+                }
+            ]
+        },
+        {
+            "sales_id": "SALE_5D4C",
+            "profit": 5.0,
+            "status": "pending",
+            "created_at": "2026-08-20 18:10:07",
+            "total": 10.0,
+            "items": [
+                {
+                    "barcode": "6161101536639",
+                    "name": "dasani 500ml water",
+                    "price": 10.0,
+                    "quantity": 1,
+                    "item_total": 10.0
+                }
+            ]
+        },
+        {
+            "sales_id": "SALE_922D",
+            "profit": 10.0,
+            "status": "pending",
+            "created_at": "2026-08-20 18:50:06",
+            "total": 20.0,
+            "items": [
+                {
+                    "barcode": "6161101536639",
+                    "name": "dasani 500ml water",
+                    "price": 10.0,
+                    "quantity": 2,
+                    "item_total": 20.0
                 }
             ]
         }

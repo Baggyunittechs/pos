@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>429 - Too Many Requests</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #333333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .error-container {
+            text-align: center;
+            max-width: 450px;
+            padding: 40px;
+            border: 1px solid #ffebeb;
+            border-radius: 12px;
+            background-color: #fffafa;
+        }
+
+        .icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #d32f2f;
+            margin-bottom: 16px;
+        }
+
+        p {
+            font-size: 15px;
+            color: #666666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .timer {
+            font-weight: bold;
+            color: #111111;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 14px;
+        }
+
+        .refresh-link {
+            display: block;
+            margin-top: 25px;
+            font-size: 13px;
+            color: #0066ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="icon">⏳</div>
+        <h1>Slow down a bit</h1>
+        <p>You've made too many requests in a short period of time. Please wait a moment before trying again.</p>
+        <div class="timer" id="countdown">Retry in 30s</div>
+        <a href="#" onclick="window.location.reload()" class="refresh-link">Try refreshing now</a>
+    </div>
+
+    <script>
+        let seconds = 30;
+        const display = document.getElementById('countdown');
+        const interval = setInterval(() => {
+            seconds--;
+            display.innerText = `Retry in ${seconds}s`;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                display.innerText = "You can try again now";
+                display.style.backgroundColor = "#e8f5e9";
+                display.style.color = "#2e7d32";
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

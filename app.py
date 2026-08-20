@@ -846,28 +846,19 @@ def hybrid_payment():
         }
 
     }
-
-
     sale["status"] = "pending"
-
     save_sales(sales)
-
-
-
     callback_url = (
         "https://your-domain.com"
         "/api/payment/mpesa/callback"
     )
-
     try:
-
         response = initiate_stk_prompt(
             phone,
             mpesa_amount,
             callback_url,
             sales_id
         )
-
     except Exception as e:
 
         sale["payments"]["mpesa"]["status"] = "failed"
@@ -885,52 +876,37 @@ def hybrid_payment():
     )
 
     if not checkout_request_id:
-
         sale["payments"]["mpesa"]["status"] = "failed"
         save_sales(sales)
-
         return jsonify({
             "status": "error",
             "message": "M-PESA STK Push failed",
             "mpesa_response": response
         }), 400
 
-
-
     sale["payments"]["mpesa"]["checkout_request_id"] = (
         checkout_request_id
     )
-
     save_sales(sales)
     update_sell_count(sale)
 
 
     return jsonify({
-
         "status": "pending",
-
         "message": "Cash received. Waiting for M-PESA payment.",
-
         "sales_id": sales_id,
-
         "sale_total": sale_total,
-
         "cash_amount": cash_amount,
-
         "mpesa_amount": mpesa_amount,
-
         "checkout_request_id": checkout_request_id
-
     }), 200
   
 
 def update_sell_count(sale):
     products = load_products()
-
     for item in sale.get("items", []):
         barcode = item.get("barcode")
         quantity = item.get("quantity", 1)
-
         for product in products:
             if str(product.get("barcode")) == str(barcode):
                 current_count = product.get("sell_count", 0)
@@ -958,9 +934,7 @@ def update_sell_count(sale):
 def get_daily_orders():
     today = date.today()
     yesterday = today - timedelta(days=1)
-
     sales = load_sales()
-
     revenue = 0
     sales_count = 0
     monthly_revenue = 0

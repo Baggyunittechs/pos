@@ -167,42 +167,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function renderLineChart(svgId, data, lineColor, fillColor) {
   const svg = document.getElementById(svgId);
-  const w = 280, h = 170, pad = 10;
+  if (!svg) return;
 
+  if (!data || !Array.isArray(data) || data.length < 2) {
+    svg.innerHTML = `
+      <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
+        No data available
+      </text>
+    `;
+    return;
+  }
+
+  const w = 280, h = 170, pad = 10;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = (max - min) || 1;
   const step = (w - pad * 2) / (data.length - 1);
 
-  const points = data.map((v, i) => [
-    pad + i * step,
-    h - pad - ((v - min) / range) * (h - pad * 2)
-  ]);
+  const points = data.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
 
-  function smoothPath(pts) {
-    let d = `M ${pts[0][0]},${pts[0][1]}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] || pts[i];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[i + 2] || p2;
-      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
-    }
-    return d;
-  }
-
-  const linePath = smoothPath(points);
-  const last = points[points.length - 1];
-  const first = points[0];
-  const areaPath = `${linePath} L ${last[0]},${h - pad} L ${first[0]},${h - pad} Z`;
+  const firstX = pad;
+  const lastX = pad + (data.length - 1) * step;
+  const areaPoints = `${firstX},${h - pad} ${points} ${lastX},${h - pad}`;
 
   svg.innerHTML = `
-    <path d="${areaPath}" fill="${fillColor}" stroke="none"></path>
-    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round"></path>
+    <defs>
+      <clipPath id="clip-${svgId}">
+        <rect x="0" y="0" width="${w}" height="${h}" />
+      </clipPath>
+    </defs>
+    <g clip-path="url(#clip-${svgId})">
+      <polygon points="${areaPoints}" fill="${fillColor}" />
+      <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
   `;
 }
 
@@ -225,12 +226,27 @@ function loadWeeklyData() {
       return response.json();
     })
     .then(data => {
+      console.log('Full API response:', data);
+      
       const weeklyRevenue = data.revenue || {};
       const weeklySales = data.sales || {};
       const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-      const revenueValues = dayOrder.map(day => weeklyRevenue[day] || 0);
-      const salesValues = dayOrder.map(day => weeklySales[day] || 0);
+      const revenueValues = dayOrder.map(day => {
+        const value = weeklyRevenue[day] || 0;
+        console.log(`Revenue ${day}:`, value);
+        return value;
+      });
+      
+      const salesValues = dayOrder.map(day => {
+        const value = weeklySales[day] || 0;
+        console.log(`Sales ${day}:`, value);
+        return value;
+      });
+
+      console.log('Revenue values array:', revenueValues);
+      console.log('Sales values array:', salesValues);
+
       const shortDayLabels = dayOrder.map(day => day.substring(0, 3));
 
       renderLineChart('revenueChart', revenueValues, '#1E9E75', 'rgba(30, 158, 117, 0.15)');
@@ -238,6 +254,9 @@ function loadWeeklyData() {
 
       const totalRevenue = revenueValues.reduce((a, b) => a + b, 0);
       const totalSales = salesValues.reduce((a, b) => a + b, 0);
+
+      console.log('Total Revenue:', totalRevenue);
+      console.log('Total Sales:', totalSales);
 
       const revenueTotalEl = document.getElementById('revenueTotal');
       if (revenueTotalEl) {
@@ -254,31 +273,27 @@ function loadWeeklyData() {
     })
     .catch(error => {
       console.error('Error loading weekly data:', error);
-
-      const revenueChart = document.getElementById('revenueChart');
-      if (revenueChart) {
-        revenueChart.innerHTML = `
-          <text x="50%" y="50%" text-anchor="middle" fill="#999" font-size="12">
-            No data available
-          </text>
-        `;
-      }
-
-      const salesChart = document.getElementById('salesChart');
-      if (salesChart) {
-        salesChart.innerHTML = `
-          <text x="50%" y="50%" text-anchor="middle" fill="#999" font-size="12">
-            No data available
-          </text>
-        `;
-      }
+      showChartError();
     });
+}
+
+function showChartError() {
+  const charts = ['revenueChart', 'salesChart'];
+  charts.forEach(id => {
+    const svg = document.getElementById(id);
+    if (svg) {
+      svg.innerHTML = `
+        <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
+          Failed to load data
+        </text>
+      `;
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadWeeklyData();
 });
-
 
 
 

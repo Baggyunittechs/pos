@@ -67,7 +67,7 @@
 }
 
 .pay-method.active .radio-dot {
-    border-color: #001846;
+    border-color: #000000;
 }
 
 .pay-method.active .radio-dot::after {
@@ -339,7 +339,7 @@
 .pay-now-btn {
     width: 100%;
     padding: 14px;
-    background: #001846;
+    background: #000000;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -352,7 +352,7 @@
 
 .pay-now-btn:hover:not(:disabled) {
     background: #FAB400;
-    color: #001846;
+    color: white;
 }
 
 .secure-note {
@@ -419,7 +419,7 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: var(--status-color, #001846);
+    background: var(--status-color, #000000);
     border-radius: 4px 4px 0 0;
 }
 
