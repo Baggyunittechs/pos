@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #333333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .main-wrapper {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-card {
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-card h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #111111;
+            text-align: center;
+        }
+
+        .form-card p {
+            font-size: 14px;
+            color: #666666;
+            margin-bottom: 32px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #444444;
+        }
+
+        input {
+            padding: 12px 16px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            background-color: #fafafa;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #FAB400;
+            background-color: #ffffff;
+        }
+
+        .btn {
+            padding: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            margin-top: 10px;
+            background-color: #fab300c8;
+            color: #ffffff;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            background-color: #FAB400;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .back-link {
+            text-align: center;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: #666666;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link a:hover {
+            color: #0066ff;
+        }
+        
+    </style>
+</head>
+
+<body>
+    <div class="main-wrapper">
+        <div class="form-card">
+            <h2>Success</h2>
+            <p>A reset Link has been sent to your email</p>
+            <a type="submit" class="btn" href="https://mail.google.com/mail/u/0/#inbox">
+                Check email
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-narrow-right-dashed">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M5 12h.5m3 0h1.5m3 0h6" />
+                    <path d="M15 16l4 -4" />
+                    <path d="M15 8l4 4" />
+                </svg>
+               
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>

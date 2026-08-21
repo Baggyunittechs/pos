@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify, make_response,redirect,url_for,flash,session
 import os
 import json
 import uuid
@@ -8,29 +8,263 @@ import requests
 from datetime import datetime, date, timedelta
 from werkzeug.utils import secure_filename
 import base64
-app = Flask(__name__)
 
+
+
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf import CSRFProtect
+from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
+import time
+import secrets
+import hashlib
+import smtplib
+from email.message import EmailMessage
+
+
+
+app = Flask(__name__)
 last_scanned_barcode = None
+app.secret_key = "secret123"
+csrf = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app)
+DATABASE = "users.db"
+
+
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return render_template("429.html"), 429
+
+
+@app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def register():
+    if request.method == "POST":
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if not username or not email or not password:
+            flash("All fields are required", "danger")
+            return redirect(url_for("register"))
+
+        hashed_password = generate_password_hash(password)
+
+        try:
+            conn = get_db()
+            conn.execute(
+                "INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, ?)",
+                (username, email, hashed_password, int(time.time())),
+            )
+            conn.commit()
+            flash("Account successfully created", "success")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            flash("Username or email already exists", "danger")
+        finally:
+            conn.close()
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        if not username or not password:
+            flash("Invalid username or password", "danger")
+            return redirect(url_for("login"))
+
+        conn = get_db()
+        user = conn.execute(
+            "SELECT id, password FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user["password"], password):
+            flash("Login successful", "success")
+            session["user_id"] = user["id"]
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Invalid username or password", "danger")
+
+    return render_template("login.html")
+
+
+def send_reset_email(to_email, token):
+    reset_link = f"http://127.0.0.1:5000/reset-password?token={token}"
+
+    msg = EmailMessage()
+    msg["Subject"] = "Password Reset Request"
+    msg["From"] = "unitbaggy3@gmail.com"
+    msg["To"] = to_email
+
+    msg.set_content(
+            f"""You requested a password reset.
+        Click the link below to reset your password:
+        {reset_link}
+        This link expires in 15 minutes.
+      """)
+    
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(
+            "unitbaggy3@gmail.com",
+            "pdzy fphw zjkg zxoh",
+        )
+        server.send_message(msg)
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def forgot_password():
+    if request.method == "GET":
+        return render_template("forgot-password.html")
+
+    email = request.form.get("email")
+
+    if not email:
+        return jsonify({"message": "Invalid request"}), 400
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT id FROM users WHERE email = ?",
+        (email,)
+    ).fetchone()
+
+    if user:
+        token = secrets.token_urlsafe(32)
+        hashed_token = hashlib.sha256(token.encode()).hexdigest()
+        expiry = int(time.time()) + 900
+
+        conn.execute(
+            "UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?",
+            (hashed_token, expiry, user["id"]),
+        )
+        conn.commit()
+        send_reset_email(email, token)
+
+
+    conn.close()
+    return redirect(url_for("resetmessage"))
+
+@app.route("/reset-password", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def reset_password():
+    if request.method == "GET":
+        token = request.args.get("token")
+        if not token:
+            return jsonify({"message": "Invalid request"}), 400
+        return render_template("reset-password.html", token=token)
+
+    token = request.form.get("token")
+    new_password = request.form.get("new_password")
+
+    if not token or not new_password:
+        return jsonify({"message": "Invalid request"}), 400
+
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT id FROM users WHERE reset_token = ? AND reset_token_expiry > ?",
+        (hashed_token, int(time.time())),
+    ).fetchone()
+
+    if not user:
+        conn.close()
+        return jsonify({"message": "Invalid or expired token"}), 400
+
+    new_hashed_password = generate_password_hash(new_password)
+
+    conn.execute(
+        "UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?",
+        (new_hashed_password, user["id"]),
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Password successfully reset"})
+
+
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user
+
+def get_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+
+    user = get_user_by_id(user_id)
+    if not user:
+        session.clear()
+        return None
+
+    return user
+
 
 @app.route("/")
-def index():
+def dashboard():
+    user = get_current_user()
+
+    if not user:
+        return redirect(url_for("login"))
+    
     return render_template("index.html")
 
+@app.route("/resetmessage")
+def resetmessage():
+    return render_template("resetmessage.html")
 @app.route("/cart")
 def cart_page():
+    user = get_current_user()
+    
+    if not user:
+        return redirect(url_for("login"))
     return render_template("cart.html")
 
 @app.route("/shop")
 def shop_page():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
     return render_template("shop.html")
 
 @app.route("/sales")
 def sales_page():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
     return render_template("sales.html")
 
 @app.route("/checkout")
 def checkout_page():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
     return render_template("checkout.html")
+
 def load_products():
     json_path = os.path.join(app.root_path, "products2.json")
     try:
