@@ -276,6 +276,7 @@ def load_products():
 detector = cv2.barcode.BarcodeDetector()
 
 @app.route("/api/barcode/scan", methods=["POST"])
+@csrf.exempt 
 def scan():
     global last_scanned_barcode
     
@@ -447,6 +448,7 @@ def get_cart():
     return response
 
 @app.route('/api/cart/add', methods=['POST'])
+@csrf.exempt 
 def add_to_cart():
     data = request.json
     product_id = data.get('product_id')
@@ -485,6 +487,7 @@ def add_to_cart():
     return response
 
 @app.route('/api/cart/update', methods=['POST'])
+@csrf.exempt 
 def update_cart():
     data = request.json
     product_id = data.get('product_id')
@@ -516,6 +519,7 @@ def update_cart():
     return response
 
 @app.route('/api/cart/remove', methods=['POST'])
+@csrf.exempt 
 def remove_from_cart():
     data = request.json
     product_id = data.get('product_id')
@@ -547,6 +551,7 @@ def remove_from_cart():
 
 
 @app.route("/api/save/sales", methods=["POST"])
+@csrf.exempt 
 def sales():
     data = request.get_json()
     items = data.get("items", [])  # Each item should have barcode and quantity
@@ -638,13 +643,14 @@ def checkout():
     
     sales = load_sales()
     for salle in sales:
-        if salle.get("sales_id") == sales_id and salle.get("status") != "paid":    
+        if salle.get("sales_id") == sales_id and salle.get("status") != "paid": 
+            
             return jsonify({
                 "status": "success",
                 "sale": salle
             }), 200
-        
 
+    
     return jsonify({
         "status": "error",
         "message": "sale not found or has already been closed"
@@ -732,6 +738,7 @@ def get_total(sales_id):
 
 
 @app.route("/api/sales/payments/mpesa", methods=["POST"])
+@csrf.exempt 
 def payments():
     data = request.json
 
@@ -778,6 +785,7 @@ def payments():
         return jsonify({"status": "error","message": str(e)}), 500
 
 @app.route("/api/payment/mpesa/callback", methods=["POST"])
+@csrf.exempt 
 def callback():
     data = request.json
 
@@ -878,6 +886,7 @@ def callback():
 
 
 @app.route("/api/payment/mpesa/callback/status", methods=["POST"])
+@csrf.exempt 
 def callback_status():
     data = request.json
     
@@ -926,6 +935,7 @@ def callback_status():
 
 
 @app.route("/api/payment/cash", methods=["POST"])
+@csrf.exempt 
 def cash_payment():
     data = request.json
     if not data:
@@ -979,6 +989,7 @@ def cash_payment():
 
 
 @app.route("/api/sales/payments/hybrid", methods=["POST"])
+@csrf.exempt 
 def hybrid_payment():
 
     data = request.json
@@ -1165,6 +1176,7 @@ def update_sell_count(sale):
 
 
 @app.route("/api/admin/sales/summary", methods=["GET"])
+@csrf.exempt 
 def get_daily_orders():
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -1264,6 +1276,7 @@ def get_daily_orders():
     
 
 @app.route("/api/admin/sales/history")
+@csrf.exempt 
 def sales_history():
     sales = load_sales()
     
@@ -1284,6 +1297,7 @@ def sales_history():
     
 
 @app.route("/api/admin/sales/weekly", methods=["GET"])
+@csrf.exempt 
 def weekly_sales():
     today = date.today()
     days_since_sunday = (today.weekday() + 1) % 7
@@ -1342,6 +1356,7 @@ def weekly_sales():
 
 
 @app.route("/api/admin/items/stock", methods=["GET"])
+@csrf.exempt 
 def load_outofstock_products():
     products = load_products()
     filtered_products = []
@@ -1362,6 +1377,7 @@ def load_outofstock_products():
     
 
 @app.route("/api/admin/items/stock/edit", methods=["POST"])
+@csrf.exempt 
 def edit_stock():
     data = request.json
     if not data:
@@ -1393,6 +1409,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/api/admin/items/upload', methods=['POST'])
+@csrf.exempt 
 def admin_add_product():
     
     
@@ -1471,6 +1488,7 @@ def admin_add_product():
 
 
 @app.route("/api/admin/stock/value", methods=["GET"])
+@csrf.exempt 
 def stock_value():
     products = load_products()
     stock_value = 0
