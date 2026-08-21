@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, jsonify, make_response,redirect,url_for,flash,session
+from flask import Flask, render_template, request, jsonify, make_response,redirect,url_for,flash,session,send_file, render_template_string
 import os
 import json
 import uuid
@@ -23,6 +23,13 @@ import smtplib
 from email.message import EmailMessage
 
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+import io
 
 app = Flask(__name__)
 last_scanned_barcode = None
@@ -30,6 +37,396 @@ app.secret_key = "secret123"
 csrf = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app)
 DATABASE = "users.db"
+
+def load_sales():
+    with open('sales.json', 'r') as f:
+        return json.load(f)
+
+def save_sales(sales):
+    with open('sales.json', 'w') as f:
+        json.dump(sales, f, indent=2)
+
+@app.route('/api/receipt/generate', methods=['POST'])
+@csrf.exempt 
+def generate_receipt():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        sales_id = data.get('sales_id')
+        if not sales_id:
+            return jsonify({'success': False, 'message': 'Sales ID required'}), 400
+        
+        # Load sales
+        sales = load_sales()
+        sale = None
+        for s in sales:
+            if s.get('sales_id') == sales_id:
+                sale = s
+                break
+        
+        if not sale:
+            return jsonify({'success': False, 'message': f'Sale {sales_id} not found'}), 404
+        
+        # Get items for this sale
+        items = sale.get('items', [])
+        
+        # If items are empty, try to get from cart
+        if not items:
+            cart = sale.get('cart', [])
+            products = load_products()
+            for cart_item in cart:
+                product_id = cart_item.get('product_id')
+                quantity = cart_item.get('quantity', 1)
+                for product in products:
+                    if str(product.get('barcode')) == str(product_id):
+                        items.append({
+                            'name': product.get('name', 'Unknown'),
+                            'quantity': quantity,
+                            'price': product.get('price', 0)
+                        })
+                        break
+        
+        receipt_data = {
+            'ticket_number': sale.get('sales_id', 'N/A'),
+            'date': sale.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            'served_by': sale.get('served_by', 'Eddy'),
+            'business_name': 'EDMA ELECTRICALS',
+            'phone': '0705470644',
+            'location': 'Nairobi',
+            'items': items,
+            'subtotal': float(sale.get('total', 0)),
+            'tax': 0,
+            'total': float(sale.get('total', 0)),
+            'payment_method': sale.get('payment_method', 'Cash'),
+            'amount_paid': float(sale.get('amount_paid', sale.get('total', 0))),
+            'change': float(sale.get('change', 0)),
+            'customer_name': sale.get('customer_name', ''),
+            'customer_email': sale.get('customer_email', ''),
+            'customer_phone': sale.get('customer_phone', ''),
+            'company': 'Pinchezmedia',
+            'email': 'juliuskyuma24@gmail.com',
+            'thank_you': 'Thank You For Shopping With Us',
+            'policy': 'GOODS ARE NOT RETURNABLE AFTER SALE',
+            'powered_by': 'System by Pinchezmedia254'
+        }
+        
+        # Save receipt data
+        os.makedirs('receipts', exist_ok=True)
+        receipt_file = f'receipts/{sales_id}.json'
+        with open(receipt_file, 'w') as f:
+            json.dump(receipt_data, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Receipt generated successfully',
+            'receipt_data': receipt_data
+        })
+        
+    except Exception as e:
+        print(f"Error generating receipt: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def build_receipt_pdf(data):
+    """Build the receipt PDF from receipt data and return it as a BytesIO buffer.
+
+    Shared by the download endpoint and the email endpoint so both produce
+    the exact same PDF.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    styles = getSampleStyleSheet()
+    story = []
+
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        alignment=TA_CENTER,
+        spaceAfter=12,
+        textColor=colors.HexColor('#001846')
+    )
+
+    header_style = ParagraphStyle(
+        'HeaderStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_CENTER,
+        spaceAfter=4,
+        textColor=colors.HexColor('#333333')
+    )
+
+    body_style = ParagraphStyle(
+        'BodyStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=4,
+        textColor=colors.HexColor('#000000')
+    )
+
+    right_style = ParagraphStyle(
+        'RightStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_RIGHT,
+        textColor=colors.HexColor('#000000')
+    )
+
+    bold_style = ParagraphStyle(
+        'BoldStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_RIGHT,
+        textColor=colors.HexColor('#000000'),
+        fontName='Helvetica-Bold'
+    )
+
+    story.append(Paragraph(data['business_name'], title_style))
+    story.append(Paragraph(f"Tel: {data['phone']}", header_style))
+    story.append(Paragraph(data['location'], header_style))
+    story.append(Spacer(1, 0.2*inch))
+
+    story.append(Paragraph(f"Ticket: {data['ticket_number']}", body_style))
+    story.append(Paragraph(f"Date: {data['date']}", body_style))
+    story.append(Paragraph(f"Served by: {data['served_by']}", body_style))
+    if data.get('customer_name'):
+        story.append(Paragraph(f"Customer: {data['customer_name']}", body_style))
+    story.append(Spacer(1, 0.2*inch))
+
+    table_data = [['Item', 'Qty', 'Price', 'Total']]
+    for item in data['items']:
+        name = item.get('name', 'Unknown')
+        qty = item.get('quantity', 1)
+        price = float(item.get('price', 0))
+        total = price * qty
+        table_data.append([
+            name[:35],
+            str(qty),
+            f"{price:.2f}",
+            f"{total:.2f}"
+        ])
+
+    table = Table(table_data, colWidths=[2.8*inch, 0.6*inch, 1.0*inch, 1.2*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001846')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F8F9FA')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB'))
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 0.2*inch))
+
+    story.append(Paragraph(f"Subtotal: {data['subtotal']:.2f} KSh", right_style))
+    story.append(Paragraph(f"Total: {data['total']:.2f} KSh", bold_style))
+    story.append(Spacer(1, 0.1*inch))
+    story.append(Paragraph(f"{data['payment_method']}: {data['amount_paid']:.2f} KSh", right_style))
+    story.append(Spacer(1, 0.2*inch))
+
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#CCCCCC')))
+    story.append(Spacer(1, 0.1*inch))
+
+    story.append(Paragraph(data['company'], body_style))
+    story.append(Paragraph(f"Tel: {data['phone']}", body_style))
+    story.append(Paragraph(data['email'], body_style))
+    story.append(Spacer(1, 0.2*inch))
+
+    story.append(Paragraph(data['thank_you'], title_style))
+    story.append(Paragraph(data['policy'], body_style))
+    story.append(Spacer(1, 0.1*inch))
+    story.append(Paragraph(data['powered_by'], body_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+@app.route('/api/receipt/download/<sales_id>', methods=['GET'])
+@csrf.exempt 
+def download_receipt_pdf(sales_id):
+    try:
+        receipt_file = f'receipts/{sales_id}.json'
+
+        if not os.path.exists(receipt_file):
+            # Try to generate receipt first
+            return jsonify({'success': False, 'message': 'Receipt not found. Please generate receipt first.'}), 404
+
+        with open(receipt_file, 'r') as f:
+            data = json.load(f)
+
+        buffer = build_receipt_pdf(data)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f'receipt_{sales_id}.pdf',
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"Error downloading receipt: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/receipt/email', methods=['POST'])
+@csrf.exempt 
+def send_receipt_email():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        sales_id = data.get('sales_id')
+        email = data.get('email')
+        
+        if not sales_id:
+            return jsonify({'success': False, 'message': 'Sales ID required'}), 400
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'Email address required'}), 400
+        
+        if '@' not in email or '.' not in email:
+            return jsonify({'success': False, 'message': 'Invalid email address'}), 400
+        
+        receipt_file = f'receipts/{sales_id}.json'
+        if not os.path.exists(receipt_file):
+            # Try to generate receipt first
+            return jsonify({'success': False, 'message': 'Receipt not found. Please generate receipt first.'}), 404
+        
+        with open(receipt_file, 'r') as f:
+            receipt_data = json.load(f)
+        
+        html_content = generate_receipt_html(receipt_data)
+        pdf_buffer = build_receipt_pdf(receipt_data)
+
+        msg = EmailMessage()
+        msg["Subject"] = f"Receipt {sales_id} - EDMA ELECTRICALS"
+        msg["From"] = "unitbaggy3@gmail.com"
+        msg["To"] = email
+        msg.set_content("Your receipt is attached. Please view this email in an HTML-compatible client to see it inline.")
+        msg.add_alternative(html_content, subtype="html")
+        msg.add_attachment(
+            pdf_buffer.read(),
+            maintype="application",
+            subtype="pdf",
+            filename=f"receipt_{sales_id}.pdf"
+        )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("unitbaggy3@gmail.com", "pdzy fphw zjkg zxoh")
+            server.send_message(msg)
+
+        return jsonify({
+            'success': True,
+            'message': f'Receipt sent to {email}'
+        })
+        
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def generate_receipt_html(data):
+    items_html = ''
+    for item in data['items']:
+        name = item.get('name', 'Unknown')
+        qty = item.get('quantity', 1)
+        price = float(item.get('price', 0))
+        total = price * qty
+        items_html += f"""
+            <tr>
+                <td>{name}</td>
+                <td style="text-align:center;">{qty}</td>
+                <td style="text-align:right;">{price:.2f}</td>
+                <td style="text-align:right;">{total:.2f}</td>
+            </tr>
+        """
+    
+    customer_info = ''
+    if data.get('customer_name'):
+        customer_info += f"<div><strong>Customer:</strong> {data['customer_name']}</div>"
+    if data.get('customer_phone'):
+        customer_info += f"<div><strong>Phone:</strong> {data['customer_phone']}</div>"
+    if data.get('customer_email'):
+        customer_info += f"<div><strong>Email:</strong> {data['customer_email']}</div>"
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Receipt {data['ticket_number']}</title>
+        <style>
+            body {{ font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
+            .receipt {{ background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            .header {{ text-align: center; border-bottom: 3px solid #001846; padding-bottom: 15px; margin-bottom: 20px; }}
+            .business {{ font-size: 24px; font-weight: bold; color: #001846; }}
+            .info {{ text-align: center; margin: 10px 0; font-size: 14px; color: #555; }}
+            .customer-info {{ background: #f8f9fa; padding: 10px 15px; border-radius: 4px; margin: 10px 0; font-size: 13px; }}
+            table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+            th {{ background: #001846; color: white; padding: 10px; text-align: left; font-size: 13px; }}
+            td {{ padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }}
+            .totals {{ text-align: right; margin: 15px 0; padding: 10px 0; border-top: 2px solid #001846; }}
+            .totals div {{ padding: 3px 0; font-size: 14px; }}
+            .total {{ font-size: 18px; font-weight: bold; color: #001846; }}
+            .footer {{ text-align: center; border-top: 2px solid #001846; padding-top: 20px; margin-top: 20px; }}
+            .thank-you {{ font-size: 18px; font-weight: bold; color: #001846; }}
+            .policy {{ font-size: 12px; color: #666; margin-top: 10px; }}
+            .powered {{ font-size: 11px; color: #999; margin-top: 10px; }}
+        </style>
+    </head>
+    <body>
+        <div class="receipt">
+            <div class="header">
+                <div class="business">{data['business_name']}</div>
+                <div>Tel: {data['phone']}</div>
+                <div>{data['location']}</div>
+            </div>
+            
+            <div class="info">
+                <div><strong>Ticket:</strong> {data['ticket_number']}</div>
+                <div><strong>Date:</strong> {data['date']}</div>
+                <div><strong>Served by:</strong> {data['served_by']}</div>
+            </div>
+            
+            {f'<div class="customer-info">{customer_info}</div>' if customer_info else ''}
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Price</th>
+                        <th style="text-align:right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_html}
+                </tbody>
+            </table>
+            
+            <div class="totals">
+                <div>Subtotal: {data['subtotal']:.2f} KSh</div>
+                <div class="total">Total: {data['total']:.2f} KSh</div>
+                <div>{data['payment_method']}: {data['amount_paid']:.2f} KSh</div>
+            </div>
+            
+            <div class="footer">
+                <div class="thank-you">{data['thank_you']}</div>
+                <div class="policy">{data['policy']}</div>
+                <div class="powered">{data['powered_by']}</div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+
 
 
 
@@ -959,7 +1356,9 @@ def cash_payment():
             sales_id,
             "paid",
             transaction_date=transaction_date,
-            payment_method = "Cash"
+            payment_method = "Cash",
+            mpesa_receipt = "No transactionID"
+            
         )
         if not updated:
             return jsonify({

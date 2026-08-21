@@ -1,7 +1,7 @@
 aside {
     padding: 90px 5px;
     height: 100%;
-    width: 250px;
+    width: 200px;
     position: fixed;
     top: 0;
     left: 0;
@@ -28,7 +28,7 @@ canvas {
 }
 
 main {
-    margin-left: 250px;
+    margin-left: 200px;
     /* Same as the width of the aside */
     padding: 20px;
     flex-grow: 1;

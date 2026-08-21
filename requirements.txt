@@ -4,3 +4,5 @@ opencv-python==4.12.0.88
 pyzbar==0.1.9
 flask_limiter
 flask_wtf
+reportlab 
+flask-mail

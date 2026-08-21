@@ -30,6 +30,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         window.saleData.salesId = result.sale.sales_id;
         window.saleData.total = result.sale.total;
+        window.saleData.email = result.sale.email || '';
+        window.saleData.customerName = result.sale.customer_name || '';
     } else {
         console.error("Checkout error:", result.message);
     }
@@ -81,8 +83,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-    // Cash and M-Pesa amounts must sum to exactly the sale total (the hybrid
-    // API rejects anything else), so keep them balanced as the person types.
     if (hybridCashInput && hybridMpesaInput) {
         hybridCashInput.addEventListener('input', function () {
             const cash = parseFloat(hybridCashInput.value) || 0;
@@ -271,6 +271,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const paymentResult = await paymentResponse.json();
 
             if (paymentResponse.ok && paymentResult.status === 'success') {
+                await generateReceipt(salesId);
                 showOverlay(
                     'Payment Successful!',
                     `Amount: KES ${window.saleData.total}\nMethod: Cash`,
@@ -338,9 +339,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                     `Check your phone for the M-Pesa prompt\nM-Pesa amount: KES ${mpesaAmount}\nTransaction ID: ${checkoutRequestId}`,
                     'accepted'
                 );
-
-                // Same STK-push callback the mpesa flow polls — the hybrid
-                // sale only needs the M-Pesa portion confirmed.
                 listenForCallback(salesId, checkoutRequestId);
             } else {
                 const errorMsg = paymentResult.message || 'Hybrid payment failed';
@@ -400,6 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 if (statusResult.status === 'success') {
                     clearInterval(checkCallback);
+                    await generateReceipt(salesId);
                     updateOverlayContent(
                         'Payment Successful!',
                         `Amount: KES ${window.saleData.total}\nReceipt: ${statusResult.receipt || 'N/A'}`,
@@ -453,6 +452,198 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             }
         }, interval);
+    }
+
+    async function generateReceipt(salesId) {
+        try {
+            const response = await fetch('/api/receipt/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sales_id: salesId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                return result.receipt_data;
+            } else {
+                throw new Error(result.message || 'Failed to generate receipt');
+            }
+        } catch (error) {
+            console.error('Error generating receipt:', error);
+            return null;
+        }
+    }
+
+    async function downloadReceiptPDF(salesId) {
+        try {
+            showToast('Generating receipt...', 'info');
+            
+            const response = await fetch(`/api/receipt/download/${salesId}`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to download receipt');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receipt_${salesId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('Receipt downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading receipt:', error);
+            showToast('Failed to download receipt', 'error');
+        }
+    }
+
+    async function sendReceiptEmail(salesId) {
+        const emailInput = document.querySelector('input[type="email"]');
+        const email = emailInput ? emailInput.value.trim() : '';
+        
+        if (!email) {
+            showToast('Please enter your email address in the checkout form', 'error');
+            return;
+        }
+        
+        if (!email.includes('@') || !email.includes('.')) {
+            showToast('Please enter a valid email address', 'error');
+            return;
+        }
+        
+        try {
+            showToast('Sending receipt...', 'info');
+            
+            const response = await fetch('/api/receipt/email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sales_id: salesId,
+                    email: email
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(`Receipt sent to ${email}`, 'success');
+            } else {
+                throw new Error(result.message || 'Failed to send email');
+            }
+        } catch (error) {
+            console.error('Error sending email:', error);
+            showToast('Failed to send receipt email', 'error');
+        }
+    }
+
+    function shareWhatsAppReceipt() {
+        const phoneInput = document.getElementById('phone');
+        const phoneNumber = phoneInput ? phoneInput.value.trim() : '';
+        
+        const total = window.saleData.total || '0.00';
+        const salesId = window.saleData.salesId || 'N/A';
+        const method = window.saleData.paymentMethod || 'Cash';
+        const customerName = window.saleData.customerName || 'Customer';
+        
+        const message = `*EDMA ELECTRICALS*
+Receipt: ${salesId}
+Date: ${new Date().toLocaleString()}
+Customer: ${customerName}
+Total: KES ${total}
+Payment: ${method}
+Phone: ${phoneNumber || 'N/A'}
+
+Thank you for shopping with us!
+GOODS ARE NOT RETURNABLE AFTER SALE
+
+System by Pinchezmedia254`;
+
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    }
+
+    function shareEmailReceipt() {
+        const emailInput = document.querySelector('input[type="email"]');
+        const email = emailInput ? emailInput.value.trim() : '';
+        
+        const total = window.saleData.total || '0.00';
+        const salesId = window.saleData.salesId || 'N/A';
+        const method = window.saleData.paymentMethod || 'Cash';
+        const customerName = window.saleData.customerName || 'Customer';
+        const phoneInput = document.getElementById('phone');
+        const phoneNumber = phoneInput ? phoneInput.value.trim() : '';
+        
+        const subject = `Receipt ${salesId} - EDMA ELECTRICALS`;
+        const body = `EDMA ELECTRICALS
+Tel: 0705470644
+Nairobi
+
+Receipt: ${salesId}
+Date: ${new Date().toLocaleString()}
+Customer: ${customerName}
+Total: KES ${total}
+Payment: ${method}
+Phone: ${phoneNumber || 'N/A'}
+
+Thank you for shopping with us!
+GOODS ARE NOT RETURNABLE AFTER SALE
+
+System by Pinchezmedia254`;
+
+        if (email) {
+            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        } else {
+            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+    }
+
+    function showToast(message, type = 'success') {
+        const existingToast = document.getElementById('custom-toast');
+        if (existingToast) existingToast.remove();
+        
+        const toast = document.createElement('div');
+        toast.id = 'custom-toast';
+        
+        const colors = {
+            success: '#28a745',
+            error: '#dc3545',
+            info: '#17a2b8'
+        };
+        
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            background: ${colors[type] || colors.success};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            max-width: 90%;
+            text-align: center;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 
     function getStatusIcon(type) {
@@ -549,19 +740,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         const content = document.getElementById('overlay-content');
         if (!content) return;
 
+        const salesId = window.saleData.salesId;
+
         let buttonsHTML = `
             <button class="overlay-action-btn continue-btn" onclick="window.location.href='/shop'">
                 Continue Shopping
             </button>
             <div class="btn-group">
-                <button class="overlay-action-btn continue-btn" onclick="window.print()">
-                    Print Receipt
+                <button class="overlay-action-btn continue-btn" onclick="window.downloadReceiptPDF('${salesId}')">
+                    Print reciept
                 </button>
-                <button class="overlay-action-btn continue-btn" onclick="shareWhatsApp()">
-                    WhatsApp
+                <button class="overlay-action-btn continue-btn" onclick="window.sendReceiptEmail('${salesId}')">
+                    Email reciept
                 </button>
-                <button class="overlay-action-btn continue-btn" onclick="shareEmail()">
-                    Email
+                <button class="overlay-action-btn continue-btn" onclick="window.shareWhatsAppReceipt()">
+                    whatsapp receipt
                 </button>
             </div>
         `;
@@ -588,21 +781,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         content.appendChild(retryBtn);
     }
 
-    window.shareWhatsApp = function() {
-        const total = window.saleData.total || '0.00';
-        const transactionId = window.saleData.checkoutRequestId || 'N/A';
-        const message = `Thank you for your purchase!\nTotal: KES ${total}\nTransaction ID: ${transactionId}`;
-        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    };
-
-    window.shareEmail = function() {
-        const total = window.saleData.total || '0.00';
-        const transactionId = window.saleData.checkoutRequestId || 'N/A';
-        const subject = 'Your Purchase Receipt';
-        const body = `Thank you for your purchase!\n\nTotal: KES ${total}\nTransaction ID: ${transactionId}`;
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    };
+    window.downloadReceiptPDF = downloadReceiptPDF;
+    window.sendReceiptEmail = sendReceiptEmail;
+    window.shareWhatsAppReceipt = shareWhatsAppReceipt;
+    window.shareEmailReceipt = shareEmailReceipt;
 
     const overlay = document.getElementById('payment-overlay');
     if (overlay) {
