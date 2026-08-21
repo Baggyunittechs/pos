@@ -2,7 +2,10 @@ const totalOrder = document.getElementById("total_order");
 const revToday = document.getElementById("rev-today");
 const revMonth = document.getElementById("rev-month");
 const salesTable = document.getElementById("salesTable");
-const profMonthly = document.getElementById("monthly_profit")
+const profMonthly = document.getElementById("monthly_profit");
+const exportCsvBtn = document.getElementById("exportCsvBtn");
+
+let currentSalesData = [];
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -15,17 +18,20 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       const data = await response.json();
-      console.log(data);
 
       function calcDelta(current, previous) {
-        if (previous > 0) return ((current - previous) / previous) * 100;
-        if (current > 0) return 100; // grew from zero — treat as full growth
-        return 0; // both zero, no change
+        const c = Number(current) || 0;
+        const p = Number(previous) || 0;
+        if (p > 0) return ((c - p) / p) * 100;
+        if (c > 0) return 100;
+        return 0;
       }
 
       function calcProfitDelta(current, previous) {
-        if (previous !== 0) return ((current - previous) / Math.abs(previous)) * 100;
-        if (current !== 0) return 100;
+        const c = Number(current) || 0;
+        const p = Number(previous) || 0;
+        if (p !== 0) return ((c - p) / Math.abs(p)) * 100;
+        if (c !== 0) return 100;
         return 0;
       }
 
@@ -33,36 +39,36 @@ document.addEventListener('DOMContentLoaded', function () {
         return Array.isArray(trendArray) && trendArray.length ? trendArray : fallback;
       }
 
-      if (response.ok) {
-        totalOrder.textContent = data.today.sales_total;
-        revToday.textContent = "KES " + data.today.revenue;
-        revMonth.textContent = "KES " + data.this_month.revenue;
-        profMonthly.textContent = "KES " + data.this_month.monthly_profit;
+      totalOrder.textContent = data.today.sales_total;
+      revToday.textContent = "KES " + data.today.revenue;
+      revMonth.textContent = "KES " + data.this_month.revenue;
+      profMonthly.textContent = "KES " + data.this_month.monthly_profit;
 
-        document.getElementById("monthly_sales_count").textContent = data.this_month.sales_total;
-
-        const salesChangePct = calcDelta(data.today.sales_total, data.yesterday.sales_total);
-        const salesChangeMnth = calcDelta(data.this_month.sales_total, data.last_month.sales_total);
-        const revenueChangePct = calcDelta(data.today.revenue, data.yesterday.revenue);
-        const revenueChangeMnth = calcDelta(data.this_month.revenue, data.last_month.revenue);
-        const profChangeMnth = calcProfitDelta(data.this_month.monthly_profit, data.last_month.last_month_profit);
-
-        setDelta('sales-delta', salesChangePct);
-        setDelta('rev-today-delta', revenueChangePct);
-        setDelta('rev-month-delta', revenueChangeMnth);
-        setDelta('sales-month-delta', salesChangeMnth);
-        setDelta('monthly_profit_delta', profChangeMnth);
-
-        setSparkline('sales-sparkline', pickTrend(data.daily_sales_trend, [data.yesterday.sales_total, data.today.sales_total]));
-        setSparkline('rev-today-sparkline', pickTrend(data.daily_revenue_trend, [data.yesterday.revenue, data.today.revenue]));
-        setSparkline('rev-month-sparkline', pickTrend(data.monthly_revenue_trend, [data.last_month.revenue, data.this_month.revenue]));
-        setSparkline('sales-month-sparkline', pickTrend(data.monthly_sales_trend, [data.last_month.sales_total, data.this_month.sales_total]));
-        setSparkline('monthly_profit_sparkline', pickTrend(data.monthly_profit_trend, [data.last_month.last_month_profit, data.this_month.monthly_profit]));
+      const monthlySalesCountEl = document.getElementById("monthly_sales_count");
+      if (monthlySalesCountEl) {
+        monthlySalesCountEl.textContent = data.this_month.sales_total;
       }
+
+      const salesChangePct = calcDelta(data.today.sales_total, data.yesterday.sales_total);
+      const salesChangeMnth = calcDelta(data.this_month.sales_total, data.last_month.sales_total);
+      const revenueChangePct = calcDelta(data.today.revenue, data.yesterday.revenue);
+      const revenueChangeMnth = calcDelta(data.this_month.revenue, data.last_month.revenue);
+      const profChangeMnth = calcProfitDelta(data.this_month.monthly_profit, data.last_month.last_month_profit);
+
+      setDelta('sales-delta', salesChangePct);
+      setDelta('rev-today-delta', revenueChangePct);
+      setDelta('rev-month-delta', revenueChangeMnth);
+      setDelta('sales-month-delta', salesChangeMnth);
+      setDelta('monthly_profit_delta', profChangeMnth);
+
+      setSparkline('sales-sparkline', pickTrend(data.daily_sales_trend, [data.yesterday.sales_total, data.today.sales_total]));
+      setSparkline('rev-today-sparkline', pickTrend(data.daily_revenue_trend, [data.yesterday.revenue, data.today.revenue]));
+      setSparkline('rev-month-sparkline', pickTrend(data.monthly_revenue_trend, [data.last_month.revenue, data.this_month.revenue]));
+      setSparkline('sales-month-sparkline', pickTrend(data.monthly_sales_trend, [data.last_month.sales_total, data.this_month.sales_total]));
+      setSparkline('monthly_profit_sparkline', pickTrend(data.monthly_profit_trend, [data.last_month.last_month_profit, data.this_month.monthly_profit]));
 
     } catch (error) {
       console.error('Error loading products:', error);
-      showError();
     }
   }
 
@@ -76,9 +82,12 @@ document.addEventListener('DOMContentLoaded', function () {
     el.classList.toggle('negative', rounded < 0);
   }
 
-  function setSparkline(svgId, values) {
+  function setSparkline(svgId, rawValues) {
     const svg = document.getElementById(svgId);
-    if (!svg || !Array.isArray(values) || values.length < 2) return;
+    if (!svg) return;
+
+    const values = Array.isArray(rawValues) ? rawValues.map(v => Number(v) || 0) : [];
+    if (values.length < 2) return;
 
     const polyline = svg.querySelector('polyline');
     if (!polyline) return;
@@ -86,13 +95,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const w = 100, h = 30, pad = 2;
     const max = Math.max(...values);
     const min = Math.min(...values);
-    const range = (max - min) || 1;
+    const range = (max - min) === 0 ? 1 : (max - min);
     const step = (w - pad * 2) / (values.length - 1);
+
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
 
     const points = values.map((v, i) => {
       const x = pad + i * step;
       const y = h - pad - ((v - min) / range) * (h - pad * 2);
-      return `${x},${y}`;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
 
     polyline.setAttribute('points', points);
@@ -107,9 +118,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       const salesHistory = await response.json();
-      console.log(salesHistory);
-      const salesArray = Array.isArray(salesHistory) ? salesHistory : [salesHistory];
-      renderSales(salesArray);
+      currentSalesData = Array.isArray(salesHistory) ? salesHistory : [salesHistory];
+      renderSales(currentSalesData);
 
     } catch (error) {
       console.error('Error loading sales history:', error);
@@ -148,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const salesStatus = dt.sales_status;
     const total = dt.total;
     const transactionID = dt.transaction_id;
-    const profit = dt.profit
+    const profit = dt.profit;
 
     return `
       <tr>
@@ -161,15 +171,56 @@ document.addEventListener('DOMContentLoaded', function () {
     `;
   }
 
+  function exportTableToCSV() {
+    if (!currentSalesData || currentSalesData.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    let csvContent = "Sales ID,Transaction ID,Total (KES),Profit (KES),Status\n";
+    let sumTotal = 0;
+    let sumProfit = 0;
+
+    currentSalesData.forEach(dt => {
+      const total = Number(dt.total) || 0;
+      const profit = Number(dt.profit) || 0;
+      
+      sumTotal += total;
+      sumProfit += profit;
+
+      csvContent += `"${dt.sales_id}","${dt.transaction_id}","${total}","${profit}","${dt.sales_status}"\n`;
+    });
+
+    csvContent += `\n"TOTALS","","${sumTotal}","${sumProfit}",""`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sales_export_${new Date().toISOString().slice(0,10)}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener("click", exportTableToCSV);
+  }
+
   loadSalesHistory();
   loadSales();
+  loadWeeklyData();
 });
 
-function renderLineChart(svgId, data, lineColor, fillColor) {
+function renderLineChart(svgId, rawData, lineColor, fillColor) {
   const svg = document.getElementById(svgId);
   if (!svg) return;
 
-  if (!data || !Array.isArray(data) || data.length < 2) {
+  const data = Array.isArray(rawData) ? rawData.map(v => Number(v) || 0) : [];
+
+  if (data.length < 2) {
     svg.innerHTML = `
       <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
         No data available
@@ -178,37 +229,37 @@ function renderLineChart(svgId, data, lineColor, fillColor) {
     return;
   }
 
-  const w = 280, h = 170, pad = 10;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = (max - min) || 1;
+  const w = 280, h = 170, pad = 15;
+  const min = 0;
+  let max = Math.max(...data);
+  if (max === 0) max = 1;
+  max = max * 1.1; 
+
+  const range = max - min;
   const step = (w - pad * 2) / (data.length - 1);
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
 
   const points = data.map((v, i) => {
     const x = pad + i * step;
     const y = h - pad - ((v - min) / range) * (h - pad * 2);
-    return `${x},${y}`;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
 
   const firstX = pad;
   const lastX = pad + (data.length - 1) * step;
-  const areaPoints = `${firstX},${h - pad} ${points} ${lastX},${h - pad}`;
+  const bottomY = h - pad;
+  const areaPoints = `${firstX},${bottomY} ${points} ${lastX},${bottomY}`;
 
   svg.innerHTML = `
-    <defs>
-      <clipPath id="clip-${svgId}">
-        <rect x="0" y="0" width="${w}" height="${h}" />
-      </clipPath>
-    </defs>
-    <g clip-path="url(#clip-${svgId})">
-      <polygon points="${areaPoints}" fill="${fillColor}" />
-      <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
+    <polygon points="${areaPoints}" fill="${fillColor}" />
+    <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
   `;
 }
 
 function formatNumber(n) {
-  return n.toLocaleString();
+  return Number(n || 0).toLocaleString();
 }
 
 function renderLabels(containerId, labels) {
@@ -226,37 +277,20 @@ function loadWeeklyData() {
       return response.json();
     })
     .then(data => {
-      console.log('Full API response:', data);
-      
       const weeklyRevenue = data.revenue || {};
       const weeklySales = data.sales || {};
       const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-      const revenueValues = dayOrder.map(day => {
-        const value = weeklyRevenue[day] || 0;
-        console.log(`Revenue ${day}:`, value);
-        return value;
-      });
-      
-      const salesValues = dayOrder.map(day => {
-        const value = weeklySales[day] || 0;
-        console.log(`Sales ${day}:`, value);
-        return value;
-      });
-
-      console.log('Revenue values array:', revenueValues);
-      console.log('Sales values array:', salesValues);
+      const revenueValues = dayOrder.map(day => Number(weeklyRevenue[day]) || 0);
+      const salesValues = dayOrder.map(day => Number(weeklySales[day]) || 0);
 
       const shortDayLabels = dayOrder.map(day => day.substring(0, 3));
 
-      renderLineChart('revenueChart', revenueValues, '#1E9E75', 'rgba(30, 158, 117, 0.15)');
       renderLineChart('salesChart', salesValues, '#F5A623', 'rgba(245, 166, 35, 0.15)');
+      renderLineChart('revenueChart', revenueValues, '#1E9E75', 'rgba(30, 158, 117, 0.15)');
 
       const totalRevenue = revenueValues.reduce((a, b) => a + b, 0);
       const totalSales = salesValues.reduce((a, b) => a + b, 0);
-
-      console.log('Total Revenue:', totalRevenue);
-      console.log('Total Sales:', totalSales);
 
       const revenueTotalEl = document.getElementById('revenueTotal');
       if (revenueTotalEl) {
@@ -273,34 +307,17 @@ function loadWeeklyData() {
     })
     .catch(error => {
       console.error('Error loading weekly data:', error);
-      showChartError();
+
+      const charts = ['revenueChart', 'salesChart'];
+      charts.forEach(id => {
+        const svg = document.getElementById(id);
+        if (svg) {
+          svg.innerHTML = `
+            <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
+              Failed to load data
+            </text>
+          `;
+        }
+      });
     });
 }
-
-function showChartError() {
-  const charts = ['revenueChart', 'salesChart'];
-  charts.forEach(id => {
-    const svg = document.getElementById(id);
-    if (svg) {
-      svg.innerHTML = `
-        <text x="140" y="85" text-anchor="middle" fill="#9aa0aa" font-size="13" font-weight="500">
-          Failed to load data
-        </text>
-      `;
-    }
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  loadWeeklyData();
-});
-
-
-
-
-
-
-
-
-
-
