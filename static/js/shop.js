@@ -1,5 +1,30 @@
 document.addEventListener('DOMContentLoaded', function() {
     const shopItemsContainer = document.getElementById('shop-items');
+    const searchInput = document.getElementById('shopSearchInput');
+    let allProducts = [];
+
+    const CART_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <path d="M3 6h18" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>`;
+    const CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>`;
+    const SPINNER_ICON = `<span class="cart-btn-spinner"></span>`;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const query = searchInput.value.trim().toLowerCase();
+            const filtered = query
+                ? allProducts.filter(p => (p.name || '').toLowerCase().includes(query))
+                : allProducts;
+            renderProducts(filtered);
+        });
+    }
+
     async function loadProducts() {
         try {
             const response = await fetch('/api/products');
@@ -9,7 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const products = await response.json();
-            renderProducts(products);
+            allProducts = products || [];
+            renderProducts(allProducts);
             
         } catch (error) {
             console.error('Error loading products:', error);
@@ -40,21 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="item" data-barcode="${barcode}" data-product-id="${barcode}">
                 <div class="item-image">
                     <img src="${imageUrl}" alt="${name}" loading="lazy" onerror="this.src='/static/images/placeholder.png'">
+                    <button class="add-to-cart" data-product-id="${barcode}" aria-label="Add ${name} to cart">
+                        ${CART_ICON}
+                    </button>
                 </div>
                 <div class="item-info">
                     <div class="name">${name}</div>
-                    <div class="barcode">${barcode}</div>
-                    <div class="price">KES ${price.toFixed(2)}</div>
-                    <button class="add-to-cart" data-product-id="${barcode}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round">
-                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                            <path d="M3 6h18" />
-                            <path d="M16 10a4 4 0 0 1-8 0" />
-                        </svg>
-                        Add to cart
-                    </button>
+                    <div class="price"><span class="price-currency">KES</span>${price.toFixed(2)}</div>
                 </div>
             </div>
         `;
@@ -73,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const productId = button.dataset.productId;
         
         button.disabled = true;
-        button.textContent = 'Adding...';
+        button.innerHTML = SPINNER_ICON;
         
         try {
             const productItem = button.closest('.item');
@@ -97,19 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 showToast(`${productName} added to cart!`, 'success');
                 
-                // Reset button
-                button.textContent = '✓ Added';
+                button.innerHTML = CHECK_ICON;
+                button.classList.add('added');
                 setTimeout(() => {
-                    button.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round">
-                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                            <path d="M3 6h18" />
-                            <path d="M16 10a4 4 0 0 1-8 0" />
-                        </svg>
-                        Add to cart
-                    `;
+                    button.innerHTML = CART_ICON;
+                    button.classList.remove('added');
                     button.disabled = false;
                 }, 1500);
                 
@@ -121,16 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Add to cart error:', error);
             showToast(error.message || 'Failed to add to cart', 'error');
             
-            button.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                    <path d="M3 6h18" />
-                    <path d="M16 10a4 4 0 0 1-8 0" />
-                </svg>
-                Add to cart
-            `;
+            button.innerHTML = CART_ICON;
             button.disabled = false;
         }
     }

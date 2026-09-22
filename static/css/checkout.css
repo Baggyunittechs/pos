@@ -551,7 +551,7 @@
 .status-title {
     font-size: 20px;
     font-weight: 700;
-    color: #111827;
+    color: #000000;
     margin: 0 0 6px;
     letter-spacing: -0.01em;
 }
@@ -600,7 +600,7 @@
 .status-meta-value {
     font-size: 14px;
     font-weight: 700;
-    color: #001846;
+    color: #000000;
     font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
 }
 
@@ -619,25 +619,22 @@
 }
 
 .continue-btn {
-    background: #001846;
+    background: #FAB400;
     color: #fff;
 }
 
 .continue-btn:hover {
     background: #FAB400;
-    color: #001846;
+    color: #fff;
 }
 
 .retry-btn {
-    background: #fff;
-    color: #001846;
-    border: 1px solid #d7dbe3 !important;
+    background: #FAB400;
+    color: #fff;
+    border: 1px solid #FAB400 !important;
 }
 
-.retry-btn:hover {
-    background: #fafafa;
-    border-color: #001846 !important;
-}
+
 
 .btn-group {
     display: flex;

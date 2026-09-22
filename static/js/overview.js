@@ -6,6 +6,10 @@ const profMonthly = document.getElementById("monthly_profit");
 const exportCsvBtn = document.getElementById("exportCsvBtn");
 
 let currentSalesData = [];
+let currentPage = 1;
+const itemsPerPage = 15;
+let showMoreButton = null;
+let totalItemsDisplayed = 0;
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -117,8 +121,24 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error('Failed to load sales');
       }
 
-      const salesHistory = await response.json();
-      currentSalesData = Array.isArray(salesHistory) ? salesHistory : [salesHistory];
+      const result = await response.json();
+      
+      let salesHistory;
+      if (Array.isArray(result)) {
+        salesHistory = result;
+      } else if (result.sales && Array.isArray(result.sales)) {
+        salesHistory = result.sales;
+        const monthInfoEl = document.getElementById('month-info');
+        if (monthInfoEl && result.month) {
+          monthInfoEl.textContent = `Showing: ${result.month} (${result.total_sales} sales)`;
+        }
+      } else {
+        salesHistory = [];
+      }
+      
+      currentSalesData = salesHistory;
+      currentPage = 1;
+      totalItemsDisplayed = 0;
       renderSales(currentSalesData);
 
     } catch (error) {
@@ -128,37 +148,113 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function renderSales(salesHistory) {
     if (!salesTable) return;
-    salesTable.innerHTML = '';
+    
+    if (showMoreButton) {
+      showMoreButton.remove();
+      showMoreButton = null;
+    }
+
+    if (currentPage === 1) {
+      salesTable.innerHTML = '';
+      totalItemsDisplayed = 0;
+    }
 
     if (!salesHistory || salesHistory.length === 0) {
       salesTable.innerHTML = `
-        <div class="empty-state-container" style="grid-column: 1 / -1;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-            <path d="M3 6h18"/>
-            <path d="M16 10a4 4 0 0 1-8 0"/>
-            <line x1="8" y1="14" x2="16" y2="14"/>
-            <line x1="8" y1="18" x2="12" y2="18"/>
-          </svg>
-          <h3>No products available</h3>
-          <p>Check back later for new items.</p>
-        </div>
+        <tr>
+          <td colspan="5">
+            <div class="empty-state-container" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; margin: 0 auto;">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <path d="M3 6h18"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+                <line x1="8" y1="14" x2="16" y2="14"/>
+                <line x1="8" y1="18" x2="12" y2="18"/>
+              </svg>
+              <h3>No sales for this month</h3>
+              <p>Check back later for new transactions.</p>
+            </div>
+          </td>
+        </tr>
       `;
       return;
     }
 
-    salesHistory.forEach(dt => {
+    const totalItems = salesHistory.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+    if (currentPage > totalPages) {
+      currentPage = totalPages;
+    }
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const pageItems = salesHistory.slice(startIndex, endIndex);
+
+    pageItems.forEach(dt => {
       const productHTML = createSaleTable(dt);
       salesTable.insertAdjacentHTML('beforeend', productHTML);
     });
+
+    totalItemsDisplayed = endIndex;
+
+    if (endIndex < totalItems) {
+      showMoreButton = document.createElement('tr');
+      showMoreButton.innerHTML = `
+        <td colspan="5" style="text-align: center; padding: 20px 0;">
+          <button id="showMoreBtn" style="
+            padding: 10px 30px;
+            background: #fab300d8;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            Show More 
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M6 9l6 6l6 -6" />
+            </svg>
+          </button>
+        </td>
+      `;
+      salesTable.parentElement.appendChild(showMoreButton);
+      
+      const showMoreBtn = document.getElementById('showMoreBtn');
+      if (showMoreBtn) {
+        showMoreBtn.addEventListener('click', function() {
+          currentPage++;
+          renderSales(currentSalesData);
+          setTimeout(() => {
+            this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        });
+        
+        showMoreBtn.addEventListener('mouseenter', function() {
+          this.style.background = '#FAB400';
+          this.style.color = '#fff';
+        });
+        
+        showMoreBtn.addEventListener('mouseleave', function() {
+          this.style.background = '#fab300d8';
+          this.style.color = '#fff';
+        });
+      }
+    }
   }
 
   function createSaleTable(dt) {
-    const salesID = dt.sales_id;
-    const salesStatus = dt.sales_status;
-    const total = dt.total;
-    const transactionID = dt.transaction_id;
-    const profit = dt.profit;
+    const salesID = dt.sales_id || 'N/A';
+    const salesStatus = dt.sales_status || 'N/A';
+    const total = dt.total || 0;
+    const transactionID = dt.transaction_id || 'N/A';
+    const profit = dt.profit || 0;
 
     return `
       <tr>
@@ -233,7 +329,7 @@ function renderLineChart(svgId, rawData, lineColor, fillColor) {
   const min = 0;
   let max = Math.max(...data);
   if (max === 0) max = 1;
-  max = max * 1.1; 
+  max = max * 1.1;
 
   const range = max - min;
   const step = (w - pad * 2) / (data.length - 1);

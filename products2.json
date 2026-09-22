@@ -3,11 +3,11 @@
         {
             "name": "dasani 500ml water",
             "barcode": "6161101536639",
-            "price": 10.0,
+            "price": 1.0,
             "image": "/static/images/dasani 500ml.jpg",
             "instock": 20,
-            "sell_count": 31,
-            "buying_price": 5.0
+            "sell_count": 93,
+            "buying_price": 1.0
         },
         {
             "name": "Kasuku Exercise",

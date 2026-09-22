@@ -225,8 +225,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const paymentResult = await paymentResponse.json();
 
-            if (paymentResponse.ok && paymentResult.ResponseCode === '0') {
-                const checkoutRequestId = paymentResult.CheckoutRequestID;
+            if (paymentResponse.ok && paymentResult.status === 'success') {
+                const checkoutRequestId = paymentResult.checkout_request_id;
                 window.saleData.checkoutRequestId = checkoutRequestId;
                 
                 showOverlay(
@@ -237,7 +237,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 listenForCallback(salesId, checkoutRequestId);
             } else {
-                const errorMsg = paymentResult.ResponseDescription || paymentResult.message || 'Payment initiation failed';
+                const errorMsg = paymentResult.message || 'Payment initiation failed';
                 showOverlay(
                     'Payment failed',
                     errorMsg,

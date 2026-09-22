@@ -1,6 +1,6 @@
 {
-  "ticket_number": "SALE_40D8",
-  "date": "2026-08-22 00:38:34",
+  "ticket_number": "SALE_F4A1",
+  "date": "2026-08-24 12:12:57",
   "served_by": "Eddy",
   "business_name": "EDMA ELECTRICALS",
   "phone": "0705470644",
@@ -10,15 +10,15 @@
       "barcode": "6161101536639",
       "name": "dasani 500ml water",
       "price": 10.0,
-      "quantity": 4,
-      "item_total": 40.0
+      "quantity": 1,
+      "item_total": 10.0
     }
   ],
-  "subtotal": 40.0,
+  "subtotal": 10.0,
   "tax": 0,
-  "total": 40.0,
+  "total": 10.0,
   "payment_method": "Cash",
-  "amount_paid": 40.0,
+  "amount_paid": 10.0,
   "change": 0.0,
   "customer_name": "",
   "customer_email": "",

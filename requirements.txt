@@ -6,3 +6,4 @@ flask_limiter
 flask_wtf
 reportlab 
 flask-mail
+requests
