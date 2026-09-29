@@ -1,4 +1,4 @@
-# Point of Sale (POS) System
+# Point of Sale (POS) System v1.0
 
 A web-based Point of Sale system built to manage products, barcode scanning, shopping carts, sales, and digital payments. The project is designed as a practical, modular POS solution with a Python/Flask backend and a JavaScript-based frontend.
 
