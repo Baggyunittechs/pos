@@ -1,5 +1,6 @@
 # Point of Sale (POS) System v1.0
-# This is version a one shop pos. POS SAAS that covers many shops in private repo
+# NOTE: This is a one shop pos. POS SAAS that covers many shops is in private repo. IF YOU WANT TO CONTRIBUTE ON IT DM ME HERE https://wa.me/254746342296
+
 A web-based Point of Sale system built to manage products, barcode scanning, shopping carts, sales, and digital payments. The project is designed as a practical, modular POS solution with a Python/Flask backend and a JavaScript-based frontend.
 
 ## Features
